@@ -1,28 +1,28 @@
 /**
- * layersStore.js
+ * layersStore.jsx
  * Central application state for all layer data — both persisted (MongoDB) and
- * session-only (view-only) layers. Uses React Context + useReducer for
- * predictable state updates. Dev A's map components consume this store read-only;
- * Dev B's upload pipeline and attribute table write to it.
+ * session-only (view-only) layers. Also manages application theme (Day/Night mode).
  */
 
-import { createContext, useContext, useReducer, useCallback } from "react";
+import { createContext, useContext, useReducer, useCallback, useEffect } from "react";
 import { deleteLayer as apiDeleteLayer } from "../services/api";
+
+const getSavedTheme = () => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const saved = localStorage.getItem("webgis-theme");
+    if (saved === "dark" || saved === "light") return saved;
+  }
+  return "light";
+};
 
 // ─── Initial State ────────────────────────────────────────────────────────────
 
 const initialState = {
-  /** @type {Array<LayerObject>} All active layers (persisted + view-only) */
   layers: [],
-
-  /** @type {string|null} Layer whose attributes are shown in the table */
   activeLayerId: null,
-
-  /** @type {string|null} Currently selected feature ID (shared map ↔ table sync) */
   selectedFeatureId: null,
-
-  /** @type {Object|null} Boundary GeoJSON polygon (owned by Dev A's BoundaryDrawTool) */
   boundaryLayer: null,
+  theme: getSavedTheme(),
 };
 
 // ─── Action Types ─────────────────────────────────────────────────────────────
@@ -33,14 +33,13 @@ const TOGGLE_LAYER_VISIBILITY = "TOGGLE_LAYER_VISIBILITY";
 const SET_ACTIVE_LAYER = "SET_ACTIVE_LAYER";
 const SET_SELECTED_FEATURE = "SET_SELECTED_FEATURE";
 const SET_BOUNDARY = "SET_BOUNDARY";
-const MARK_LAYER_PERSISTED = "MARK_LAYER_PERSISTED";
+const TOGGLE_THEME = "TOGGLE_THEME";
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
 function reducer(state, action) {
   switch (action.type) {
     case ADD_LAYER: {
-      // Prevent duplicate layer IDs
       const exists = state.layers.find((l) => l.id === action.payload.id);
       if (exists) return state;
       return {
@@ -54,10 +53,7 @@ function reducer(state, action) {
       return {
         ...state,
         layers: state.layers.filter((l) => l.id !== action.payload),
-        activeLayerId:
-          state.activeLayerId === action.payload
-            ? null
-            : state.activeLayerId,
+        activeLayerId: state.activeLayerId === action.payload ? null : state.activeLayerId,
         selectedFeatureId: null,
       };
 
@@ -65,9 +61,7 @@ function reducer(state, action) {
       return {
         ...state,
         layers: state.layers.map((l) =>
-          l.id === action.payload
-            ? { ...l, isVisible: !l.isVisible }
-            : l
+          l.id === action.payload ? { ...l, isVisible: !l.isVisible } : l
         ),
       };
 
@@ -80,15 +74,13 @@ function reducer(state, action) {
     case SET_BOUNDARY:
       return { ...state, boundaryLayer: action.payload };
 
-    case MARK_LAYER_PERSISTED:
-      return {
-        ...state,
-        layers: state.layers.map((l) =>
-          l.id === action.payload.tempId
-            ? { ...l, id: action.payload.newId, isPersisted: true }
-            : l
-        ),
-      };
+    case TOGGLE_THEME: {
+      const nextTheme = state.theme === "light" ? "dark" : "light";
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.setItem("webgis-theme", nextTheme);
+      }
+      return { ...state, theme: nextTheme };
+    }
 
     default:
       return state;
@@ -101,21 +93,18 @@ const LayersContext = createContext(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-/**
- * Wrap your app root with <LayersProvider> to enable the store.
- */
 export function LayersProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  /** Add a fully-formed layer object to the store. */
+  // Sync data-theme attribute on root html node whenever theme changes
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", state.theme);
+  }, [state.theme]);
+
   const addLayer = useCallback((layer) => {
     dispatch({ type: ADD_LAYER, payload: layer });
   }, []);
 
-  /**
-   * Remove a layer from the store.
-   * If the layer is persisted, also calls the API to delete it from the DB.
-   */
   const removeLayer = useCallback(async (layerId) => {
     const layer = state.layers.find((l) => l.id === layerId);
     if (layer?.isPersisted) {
@@ -124,36 +113,28 @@ export function LayersProvider({ children }) {
     dispatch({ type: REMOVE_LAYER, payload: layerId });
   }, [state.layers]);
 
-  /** Toggle a layer's map visibility on/off. */
   const toggleLayerVisibility = useCallback((layerId) => {
     dispatch({ type: TOGGLE_LAYER_VISIBILITY, payload: layerId });
   }, []);
 
-  /** Set which layer's attributes are displayed in the AttributeTable. */
   const setActiveLayer = useCallback((layerId) => {
     dispatch({ type: SET_ACTIVE_LAYER, payload: layerId });
   }, []);
 
-  /**
-   * Set the selected feature ID.
-   * Both the map (Dev A) and the attribute table (Dev B) read/write this.
-   * Pass null to clear selection.
-   */
   const setSelectedFeature = useCallback((featureId) => {
     dispatch({ type: SET_SELECTED_FEATURE, payload: featureId });
   }, []);
 
-  /** Update/replace the boundary layer GeoJSON. Used by Dev A's BoundaryDrawTool. */
   const setBoundary = useCallback((geojson) => {
     dispatch({ type: SET_BOUNDARY, payload: geojson });
   }, []);
 
-  // ─── Derived helpers ──────────────────────────────────────────────────────
+  const toggleTheme = useCallback(() => {
+    dispatch({ type: TOGGLE_THEME });
+  }, []);
 
-  /** Returns the active layer object, or null. */
   const activeLayer = state.layers.find((l) => l.id === state.activeLayerId) || null;
 
-  /** Returns all features across all visible layers — for map rendering (Dev A). */
   const allVisibleFeatures = state.layers
     .filter((l) => l.isVisible)
     .flatMap((l) => l.features || []);
@@ -161,21 +142,21 @@ export function LayersProvider({ children }) {
   return (
     <LayersContext.Provider
       value={{
-        // State
         layers: state.layers,
         activeLayerId: state.activeLayerId,
         selectedFeatureId: state.selectedFeatureId,
         boundaryLayer: state.boundaryLayer,
+        theme: state.theme,
         activeLayer,
         allVisibleFeatures,
 
-        // Actions
         addLayer,
         removeLayer,
         toggleLayerVisibility,
         setActiveLayer,
         setSelectedFeature,
         setBoundary,
+        toggleTheme,
       }}
     >
       {children}
@@ -183,12 +164,6 @@ export function LayersProvider({ children }) {
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
-/**
- * Consume the layers store in any component.
- * @returns {Object} store state + action dispatchers
- */
 export function useLayersStore() {
   const ctx = useContext(LayersContext);
   if (!ctx) {
