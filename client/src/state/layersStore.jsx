@@ -23,6 +23,7 @@ const initialState = {
   selectedFeatureId: null,
   boundaryLayer: null,
   theme: getSavedTheme(),
+  mapInstance: null,
 };
 
 // ─── Action Types ─────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ const SET_ACTIVE_LAYER = "SET_ACTIVE_LAYER";
 const SET_SELECTED_FEATURE = "SET_SELECTED_FEATURE";
 const SET_BOUNDARY = "SET_BOUNDARY";
 const TOGGLE_THEME = "TOGGLE_THEME";
+const SET_MAP_INSTANCE = "SET_MAP_INSTANCE";
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +83,9 @@ function reducer(state, action) {
       }
       return { ...state, theme: nextTheme };
     }
+
+    case SET_MAP_INSTANCE:
+      return { ...state, mapInstance: action.payload };
 
     default:
       return state;
@@ -133,6 +138,10 @@ export function LayersProvider({ children }) {
     dispatch({ type: TOGGLE_THEME });
   }, []);
 
+  const setMapInstance = useCallback((map) => {
+    dispatch({ type: SET_MAP_INSTANCE, payload: map });
+  }, []);
+
   const activeLayer = state.layers.find((l) => l.id === state.activeLayerId) || null;
 
   const allVisibleFeatures = state.layers
@@ -147,6 +156,7 @@ export function LayersProvider({ children }) {
         selectedFeatureId: state.selectedFeatureId,
         boundaryLayer: state.boundaryLayer,
         theme: state.theme,
+        mapInstance: state.mapInstance,
         activeLayer,
         allVisibleFeatures,
 
@@ -157,6 +167,7 @@ export function LayersProvider({ children }) {
         setSelectedFeature,
         setBoundary,
         toggleTheme,
+        setMapInstance,
       }}
     >
       {children}
