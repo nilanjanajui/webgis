@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useLayersStore } from "../../state/layersStore";
 import { applyMapping } from "../../utils/fieldMatcher";
 import { rowsToGeoJSON } from "../../utils/rowsToGeoJSON";
@@ -108,7 +109,7 @@ export default function ConfirmationPreview({ previewData, onClose }) {
     [geojson, rawRows, userMapping, file, addLayer, onClose]
   );
 
-  return (
+  return createPortal(
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="preview-title" id="confirmation-preview-modal">
       <div className="modal-panel">
         {/* Header */}
@@ -194,6 +195,7 @@ export default function ConfirmationPreview({ previewData, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

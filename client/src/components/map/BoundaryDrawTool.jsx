@@ -61,7 +61,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       // Fit map to boundary extent
       const bounds = layer.getBounds();
       if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
-    } catch (_) {}
+    } catch (_) { }
 
     return () => {
       if (boundaryGLRef.current) {
@@ -112,7 +112,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       map.off("click", onClick);
       map.off("dblclick", onDblClick);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDrawing]);
 
   function cleanup() {

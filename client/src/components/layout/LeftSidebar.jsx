@@ -13,6 +13,8 @@ import { getCategoryColor } from "../../constants/categoryColors";
 import { describeGeometry } from "../../utils/geometryLabel";
 import { exportShapefile } from "../../utils/shapefileExport";
 import { exportToPdf } from "../../utils/exportToPdf";
+import { boundaryFromPoints } from "../../utils/convexHull";
+import { saveBoundary as apiSaveBoundary } from "../../services/api";
 
 // ── Layer list ────────────────────────────────────────────────────────────────
 
@@ -58,7 +60,7 @@ function LayerList() {
 
 // ── Tool button ───────────────────────────────────────────────────────────────
 
-function ToolBtn({ id, icon, label, active, onClick, variant = "default" }) {
+function ToolBtn({ id, icon, label, active, onClick, variant = "default", disabled = false }) {
   return (
     <button
       id={id}
@@ -66,6 +68,7 @@ function ToolBtn({ id, icon, label, active, onClick, variant = "default" }) {
       onClick={onClick}
       title={label}
       aria-pressed={active}
+      disabled={disabled}
     >
       {icon}
       <span>{label}</span>
@@ -82,7 +85,24 @@ export default function LeftSidebar({
   onToggleAddPoint,
   mapElRef,
 }) {
-  const { layers, boundaryLayer, mapInstance } = useLayersStore();
+  const { layers, boundaryLayer, mapInstance, setBoundary } = useLayersStore();
+
+  const pointCount = layers
+    .flatMap((l) => l.features || [])
+    .filter((f) => f.geometry?.type === "Point").length;
+
+  const handleGenerateBoundary = async () => {
+    const points = layers
+      .flatMap((l) => l.features || [])
+      .filter((f) => f.geometry?.type === "Point")
+      .map((f) => f.geometry.coordinates); // [lng, lat]
+
+    const polygon = boundaryFromPoints(points, 0.12);
+    if (!polygon) return; // fewer than 3 distinct points — nothing to enclose
+
+    setBoundary(polygon);
+    apiSaveBoundary(polygon).catch(console.error);
+  };
 
   const handleExportShp = () => exportShapefile(layers, "webgis_export");
 
@@ -128,6 +148,13 @@ export default function LeftSidebar({
             label="Add Point"
             active={isAddingPoint}
             onClick={onToggleAddPoint}
+          />
+          <ToolBtn
+            id="tool-generate-boundary"
+            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3l4 15 5-6 6-5-15-4z" /></svg>}
+            label={pointCount < 3 ? "Generate Boundary (needs 3+ points)" : "Generate Boundary from Points"}
+            onClick={handleGenerateBoundary}
+            disabled={pointCount < 3}
           />
         </div>
       </div>
