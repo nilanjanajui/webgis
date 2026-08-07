@@ -13,6 +13,7 @@
 
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import L from "leaflet";
 import { getCategoryColor } from "../constants/categoryColors";
 import { describeGeometry } from "./geometryLabel";
 
@@ -23,13 +24,28 @@ const MARGIN = 12;
  * Export the map as a print-layout PDF.
  *
  * @param {Object} opts
- * @param {string}  opts.title      - Map title for the print layout
- * @param {Array}   opts.layers     - Layer objects from layersStore
- * @param {Object}  opts.mapEl      - DOM element of the Leaflet map container
- * @param {Object}  [opts.boundary] - GeoJSON boundary geometry (for extent fitting)
+ * @param {string}  opts.title         - Map title for the print layout
+ * @param {Array}   opts.layers        - Layer objects from layersStore
+ * @param {Object}  opts.mapEl         - DOM element of the Leaflet map container
+ * @param {Object}  [opts.boundary]    - GeoJSON boundary geometry (for extent fitting)
+ * @param {Object}  [opts.mapInstance]  - Leaflet map instance for programmatic view changes
  */
-export async function exportToPdf({ title = "WebGIS Map", layers, mapEl, boundary }) {
+export async function exportToPdf({ title = "WebGIS Map", layers, mapEl, boundary, mapInstance }) {
   if (!mapEl) { alert("Map not ready."); return; }
+
+  // ── 0. Critical extent rule: fit map to boundary before capture ────────
+  let previousView = null;
+  if (boundary && mapInstance) {
+    // Save current view so we can restore it after capture
+    previousView = {
+      center: mapInstance.getCenter(),
+      zoom: mapInstance.getZoom(),
+    };
+    const boundaryBounds = L.geoJSON(boundary).getBounds();
+    mapInstance.fitBounds(boundaryBounds, { animate: false, padding: [20, 20] });
+    // Wait for tiles to load at the new zoom level
+    await new Promise((resolve) => setTimeout(resolve, 800));
+  }
 
   // ── 1. Capture the map ────────────────────────────────────────────────────
   const canvas = await html2canvas(mapEl, {
@@ -40,6 +56,11 @@ export async function exportToPdf({ title = "WebGIS Map", layers, mapEl, boundar
   });
 
   const mapImgData = canvas.toDataURL("image/png");
+
+  // Restore original view after capture
+  if (previousView && mapInstance) {
+    mapInstance.setView(previousView.center, previousView.zoom, { animate: false });
+  }
 
   // ── 2. Build PDF ──────────────────────────────────────────────────────────
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });

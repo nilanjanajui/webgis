@@ -82,7 +82,7 @@ export default function LeftSidebar({
   onToggleAddPoint,
   mapElRef,
 }) {
-  const { layers, boundaryLayer } = useLayersStore();
+  const { layers, boundaryLayer, mapInstance } = useLayersStore();
 
   const handleExportShp = () => exportShapefile(layers, "webgis_export");
 
@@ -92,6 +92,7 @@ export default function LeftSidebar({
       layers,
       mapEl: mapElRef?.current,
       boundary: boundaryLayer,
+      mapInstance,
     });
 
   return (

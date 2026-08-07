@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, ZoomControl, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, ZoomControl, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLayersStore } from "../../state/layersStore";
 import { getFeatures, getBoundary } from "../../services/api";
@@ -41,6 +41,19 @@ function CoordinateTracker() {
       <span className="coord-lng">LNG: {coords.lng.toFixed(5)}°</span>
     </div>
   );
+}
+
+/** Publishes the Leaflet map instance to the global store */
+function MapInstancePublisher() {
+  const map = useMap();
+  const { setMapInstance } = useLayersStore();
+
+  useEffect(() => {
+    setMapInstance(map);
+    return () => setMapInstance(null);
+  }, [map, setMapInstance]);
+
+  return null;
 }
 
 export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDrawEnd, onPointFormClose }) {
@@ -117,6 +130,7 @@ export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDr
           />
         )}
 
+        <MapInstancePublisher />
         <ZoomControl position="bottomright" />
         <CoordinateTracker />
 
