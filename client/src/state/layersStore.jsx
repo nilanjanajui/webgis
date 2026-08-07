@@ -22,6 +22,7 @@ const initialState = {
   activeLayerId: null,
   selectedFeatureId: null,
   boundaryLayer: null,
+  boundaryVisible: true,
   theme: getSavedTheme(),
   mapInstance: null,
 };
@@ -34,6 +35,7 @@ const TOGGLE_LAYER_VISIBILITY = "TOGGLE_LAYER_VISIBILITY";
 const SET_ACTIVE_LAYER = "SET_ACTIVE_LAYER";
 const SET_SELECTED_FEATURE = "SET_SELECTED_FEATURE";
 const SET_BOUNDARY = "SET_BOUNDARY";
+const TOGGLE_BOUNDARY_VISIBILITY = "TOGGLE_BOUNDARY_VISIBILITY";
 const TOGGLE_THEME = "TOGGLE_THEME";
 const SET_MAP_INSTANCE = "SET_MAP_INSTANCE";
 
@@ -74,7 +76,10 @@ function reducer(state, action) {
       return { ...state, selectedFeatureId: action.payload };
 
     case SET_BOUNDARY:
-      return { ...state, boundaryLayer: action.payload };
+      return { ...state, boundaryLayer: action.payload, boundaryVisible: true };
+
+    case TOGGLE_BOUNDARY_VISIBILITY:
+      return { ...state, boundaryVisible: !state.boundaryVisible };
 
     case TOGGLE_THEME: {
       const nextTheme = state.theme === "light" ? "dark" : "light";
@@ -134,6 +139,10 @@ export function LayersProvider({ children }) {
     dispatch({ type: SET_BOUNDARY, payload: geojson });
   }, []);
 
+  const toggleBoundaryVisibility = useCallback(() => {
+    dispatch({ type: TOGGLE_BOUNDARY_VISIBILITY });
+  }, []);
+
   const toggleTheme = useCallback(() => {
     dispatch({ type: TOGGLE_THEME });
   }, []);
@@ -155,6 +164,7 @@ export function LayersProvider({ children }) {
         activeLayerId: state.activeLayerId,
         selectedFeatureId: state.selectedFeatureId,
         boundaryLayer: state.boundaryLayer,
+        boundaryVisible: state.boundaryVisible,
         theme: state.theme,
         mapInstance: state.mapInstance,
         activeLayer,
@@ -166,6 +176,7 @@ export function LayersProvider({ children }) {
         setActiveLayer,
         setSelectedFeature,
         setBoundary,
+        toggleBoundaryVisibility,
         toggleTheme,
         setMapInstance,
       }}

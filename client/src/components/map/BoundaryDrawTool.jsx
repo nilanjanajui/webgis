@@ -36,7 +36,7 @@ const VERTEX_STYLE = {
 
 export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
   const map = useMap();
-  const { boundaryLayer, setBoundary } = useLayersStore();
+  const { boundaryLayer, boundaryVisible, setBoundary } = useLayersStore();
 
   const polylineRef = useRef(null);   // live preview polyline while drawing
   const verticesRef = useRef([]);     // [LatLng] of clicked vertices
@@ -49,7 +49,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       map.removeLayer(boundaryGLRef.current);
       boundaryGLRef.current = null;
     }
-    if (!boundaryLayer) return;
+    if (!boundaryLayer || !boundaryVisible) return;
 
     try {
       const layer = L.geoJSON(
@@ -69,7 +69,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
         boundaryGLRef.current = null;
       }
     };
-  }, [boundaryLayer, map]);
+  }, [boundaryLayer, boundaryVisible, map]);
 
   // ── Drawing mode ──────────────────────────────────────────────────────────
   useEffect(() => {

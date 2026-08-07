@@ -8,22 +8,16 @@
  * algorithm, O(n log n).
  */
 
-// Cross product of OA x OB vectors. > 0 = counter-clockwise turn.
 function cross([ox, oy], [ax, ay], [bx, by]) {
     return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox);
 }
 
-/**
- * @param {[number, number][]} points - array of [lng, lat]
- * @returns {[number, number][]} hull points, counter-clockwise, NOT closed (first !== last)
- */
 export function convexHull(points) {
-    // De-dupe + sort by x, then y
     const pts = Array.from(new Set(points.map((p) => p.join(","))))
         .map((s) => s.split(",").map(Number))
         .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 
-    if (pts.length < 3) return pts; // not enough points for a polygon
+    if (pts.length < 3) return pts;
 
     const lower = [];
     for (const p of pts) {
@@ -47,12 +41,6 @@ export function convexHull(points) {
     return lower.concat(upper);
 }
 
-/**
- * Expands a hull outward from its centroid by a fixed percentage, so the
- * boundary line doesn't run directly through the outermost point markers.
- * @param {[number, number][]} hullPoints
- * @param {number} paddingRatio - e.g. 0.12 = 12% outward expansion
- */
 export function padHull(hullPoints, paddingRatio = 0.12) {
     if (hullPoints.length < 3) return hullPoints;
 
@@ -65,17 +53,12 @@ export function padHull(hullPoints, paddingRatio = 0.12) {
     ]);
 }
 
-/**
- * Builds a closed GeoJSON Polygon geometry (ring's first/last point equal)
- * enclosing the given [lng, lat] points, with padding applied.
- * Returns null if fewer than 3 distinct points are given.
- */
 export function boundaryFromPoints(points, paddingRatio = 0.12) {
     const hull = convexHull(points);
     if (hull.length < 3) return null;
 
     const padded = padHull(hull, paddingRatio);
-    const ring = [...padded, padded[0]]; // close the ring
+    const ring = [...padded, padded[0]];
 
     return { type: "Polygon", coordinates: [ring] };
 }
