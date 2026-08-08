@@ -36,7 +36,7 @@ const VERTEX_STYLE = {
 
 export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
   const map = useMap();
-  const { boundaryLayer, setBoundary } = useLayersStore();
+  const { boundaryLayer, boundaryVisible, setBoundary } = useLayersStore();
 
   const polylineRef = useRef(null);   // live preview polyline while drawing
   const verticesRef = useRef([]);     // [LatLng] of clicked vertices
@@ -49,7 +49,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       map.removeLayer(boundaryGLRef.current);
       boundaryGLRef.current = null;
     }
-    if (!boundaryLayer) return;
+    if (!boundaryLayer || !boundaryVisible) return;
 
     try {
       const layer = L.geoJSON(
@@ -61,7 +61,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       // Fit map to boundary extent
       const bounds = layer.getBounds();
       if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
-    } catch (_) {}
+    } catch (_) { }
 
     return () => {
       if (boundaryGLRef.current) {
@@ -69,7 +69,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
         boundaryGLRef.current = null;
       }
     };
-  }, [boundaryLayer, map]);
+  }, [boundaryLayer, boundaryVisible, map]);
 
   // ── Drawing mode ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       map.off("click", onClick);
       map.off("dblclick", onDblClick);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDrawing]);
 
   function cleanup() {

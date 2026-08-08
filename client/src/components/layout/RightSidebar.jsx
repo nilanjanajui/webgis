@@ -9,8 +9,8 @@ import AttributeTable from "../panels/AttributeTable";
 import { useLayersStore } from "../../state/layersStore";
 
 const TABS = [
-  { id: "table",   label: "Table"   },
-  { id: "legend",  label: "Legend"  },
+  { id: "table", label: "Table" },
+  { id: "legend", label: "Legend" },
   { id: "details", label: "Details" },
 ];
 
@@ -42,23 +42,29 @@ export default function RightSidebar({ LegendComponent, FeatureDetailsComponent 
       </nav>
 
       <div className="right-sidebar__content">
-        <div role="tabpanel" id="right-panel-table" aria-labelledby="right-tab-table" hidden={activeTab !== "table"}>
-          <AttributeTable />
-        </div>
+        {activeTab === "table" && (
+          <div role="tabpanel" id="right-panel-table" aria-labelledby="right-tab-table">
+            <AttributeTable />
+          </div>
+        )}
 
-        <div role="tabpanel" id="right-panel-legend" aria-labelledby="right-tab-legend" hidden={activeTab !== "legend"}>
-          {LegendComponent
-            ? <LegendComponent />
-            : <div className="right-sidebar__placeholder" id="legend-placeholder">Legend panel (Dev A)</div>
-          }
-        </div>
+        {activeTab === "legend" && (
+          <div role="tabpanel" id="right-panel-legend" aria-labelledby="right-tab-legend">
+            {LegendComponent
+              ? <LegendComponent />
+              : <div className="right-sidebar__placeholder" id="legend-placeholder">Legend panel (Dev A)</div>
+            }
+          </div>
+        )}
 
-        <div role="tabpanel" id="right-panel-details" aria-labelledby="right-tab-details" hidden={activeTab !== "details"}>
-          {FeatureDetailsComponent
-            ? <FeatureDetailsComponent />
-            : <div className="right-sidebar__placeholder" id="details-placeholder">Feature details panel (Dev A)</div>
-          }
-        </div>
+        {activeTab === "details" && (
+          <div role="tabpanel" id="right-panel-details" aria-labelledby="right-tab-details">
+            {FeatureDetailsComponent
+              ? <FeatureDetailsComponent />
+              : <div className="right-sidebar__placeholder" id="details-placeholder">Feature details panel (Dev A)</div>
+            }
+          </div>
+        )}
       </div>
     </aside>
   );

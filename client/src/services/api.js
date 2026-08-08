@@ -5,19 +5,34 @@
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const TOKEN_KEY = "webgis-auth-token";
+
+// ─── Token storage ──────────────────────────────────────────────────────────
+// Simple localStorage read here (not React state) so every api.js call can
+// attach it automatically, without every caller having to pass it in.
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
 
 async function request(method, path, body = null) {
-  const options = {
-    method,
-    headers: { "Content-Type": "application/json" },
-  };
+  const headers = { "Content-Type": "application/json" };
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const options = { method, headers };
   if (body) options.body = JSON.stringify(body);
 
   const res = await fetch(`${BASE_URL}${path}`, options);
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || `HTTP ${res.status}`);
+    throw new Error(err.message || err.error || `HTTP ${res.status}`);
   }
 
   // 204 No Content
@@ -25,10 +40,39 @@ async function request(method, path, body = null) {
   return res.json();
 }
 
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+/**
+ * Register a new account. Returns { token, user }.
+ * @param {string} username
+ * @param {string} password
+ */
+export async function register(username, password) {
+  return request("POST", "/auth/register", { username, password });
+}
+
+/**
+ * Log in to an existing account. Returns { token, user }.
+ * @param {string} username
+ * @param {string} password
+ */
+export async function login(username, password) {
+  return request("POST", "/auth/login", { username, password });
+}
+
+/**
+ * Validate the currently stored token and fetch the current user.
+ * Used on page load to restore a session. Throws if the token is
+ * missing/expired/invalid — caller should treat that as "logged out".
+ */
+export async function getCurrentUser() {
+  return request("GET", "/auth/me");
+}
+
 // ─── Features ────────────────────────────────────────────────────────────────
 
 /**
- * Fetch all persisted features from the database.
+ * Fetch all persisted features from the database. Public — no login required.
  * @returns {Promise<Array>}
  */
 export async function getFeatures() {
@@ -36,7 +80,7 @@ export async function getFeatures() {
 }
 
 /**
- * Create a single feature in the database.
+ * Create a single feature in the database. Requires login.
  * @param {Object} feature - Feature object matching the agreed shape
  * @returns {Promise<Object>}
  */
@@ -45,7 +89,7 @@ export async function createFeature(feature) {
 }
 
 /**
- * Create multiple features in one request (batch upload).
+ * Create multiple features in one request (batch upload). Requires login.
  * @param {Array} features
  * @returns {Promise<Array>}
  */
@@ -54,7 +98,7 @@ export async function createBatchFeatures(features) {
 }
 
 /**
- * Delete a single feature by its ID.
+ * Delete a single feature by its ID. Requires login.
  * @param {string} id
  * @returns {Promise<null>}
  */
@@ -65,7 +109,7 @@ export async function deleteFeature(id) {
 // ─── Layers ──────────────────────────────────────────────────────────────────
 
 /**
- * Delete all features belonging to a layer by layerId.
+ * Delete all features belonging to a layer by layerId. Requires login.
  * @param {string} layerId
  * @returns {Promise<null>}
  */
@@ -76,7 +120,7 @@ export async function deleteLayer(layerId) {
 // ─── Boundary ────────────────────────────────────────────────────────────────
 
 /**
- * Fetch the saved boundary polygon from the database.
+ * Fetch the saved boundary polygon from the database. Public — no login required.
  * @returns {Promise<Object|null>}
  */
 export async function getBoundary() {
@@ -84,7 +128,7 @@ export async function getBoundary() {
 }
 
 /**
- * Save or overwrite the boundary polygon.
+ * Save or overwrite the boundary polygon. Requires login.
  * @param {Object} geojsonPolygon - GeoJSON Polygon geometry
  * @returns {Promise<Object>}
  */

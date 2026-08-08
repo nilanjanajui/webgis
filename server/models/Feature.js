@@ -7,6 +7,7 @@ const featureSchema = new mongoose.Schema({
   descr: { type: String },
   layer_type: { type: String, default: 'feature' }, // 'feature' or 'boundary'
   layerId: { type: String }, // Maps to the frontend's generated layer UUID
+  createdBy: { type: String }, // Username of the account that saved this feature
   geometry: {
     type: {
       type: String,
