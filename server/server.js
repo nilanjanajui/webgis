@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const featuresRoutes = require('./routes/features');
 const boundaryRoutes = require('./routes/boundary');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -20,6 +21,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/', (req, res) => res.send('Server is running'));
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/features', featuresRoutes);
 app.use('/api/boundary', boundaryRoutes);
 

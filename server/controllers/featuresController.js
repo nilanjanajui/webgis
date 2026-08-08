@@ -15,12 +15,9 @@ exports.getAllFeatures = async (req, res) => {
 exports.createFeatures = async (req, res) => {
   try {
     const data = Array.isArray(req.body) ? req.body : [req.body];
-    
-    // Optional: map over data and ensure coordinates are strictly valid if needed
-    // using the toGeoJSONCoords util. For now, assuming data is well-formed GeoJSON.
-    
+
     const savedFeatures = await Feature.insertMany(
-      data.map(f => ({ ...f, layer_type: 'feature' }))
+      data.map(f => ({ ...f, layer_type: 'feature', createdBy: req.user.username }))
     );
     res.status(201).json(savedFeatures);
   } catch (err) {
@@ -38,7 +35,7 @@ exports.updateFeature = async (req, res) => {
       req.body,
       { new: true }
     );
-    
+
     if (!updated) return res.status(404).json({ error: 'Feature not found' });
     res.json(updated);
   } catch (err) {
@@ -54,7 +51,7 @@ exports.deleteFeature = async (req, res) => {
       $or: [{ feature_id: featureId }, { _id: featureId }],
       layer_type: 'feature'
     });
-    
+
     if (!deleted) return res.status(404).json({ error: 'Feature not found' });
     res.json({ message: 'Feature deleted successfully' });
   } catch (err) {
@@ -70,7 +67,7 @@ exports.createBatchFeatures = async (req, res) => {
       return res.status(400).json({ error: 'Expected an array of features in req.body.features' });
     }
     const savedFeatures = await Feature.insertMany(
-      features.map(f => ({ ...f, layer_type: 'feature' }))
+      features.map(f => ({ ...f, layer_type: 'feature', createdBy: req.user.username }))
     );
     res.status(201).json(savedFeatures);
   } catch (err) {
