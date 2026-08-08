@@ -10,6 +10,7 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLayersStore } from "../../state/layersStore";
+import { useAuth } from "../../state/authStore";
 import { applyMapping } from "../../utils/fieldMatcher";
 import { rowsToGeoJSON } from "../../utils/rowsToGeoJSON";
 import { describeFileType } from "../../utils/fileTypeDetect";
@@ -42,6 +43,7 @@ function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted) {
 
 export default function ConfirmationPreview({ previewData, onClose }) {
   const { addLayer } = useLayersStore();
+  const { isLoggedIn } = useAuth();
   const [userMapping, setUserMapping] = useState(previewData.matchResult?.mapping || {});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -188,10 +190,11 @@ export default function ConfirmationPreview({ previewData, onClose }) {
           <button
             className="btn btn--primary"
             onClick={() => handleConfirm(true)}
-            disabled={isSaving}
+            disabled={isSaving || !isLoggedIn}
             id="preview-save-btn"
+            title={!isLoggedIn ? "Log in to save to the project" : undefined}
           >
-            {isSaving ? "Saving…" : "Save to Project"}
+            {isSaving ? "Saving…" : !isLoggedIn ? "Log In to Save" : "Save to Project"}
           </button>
         </div>
       </div>

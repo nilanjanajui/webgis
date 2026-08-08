@@ -1,20 +1,24 @@
 /**
  * App.jsx — Root layout
  * Wires all components together with a sophisticated header, live status indicators,
- * Day/Night theme toggle, and responsive three-panel WebGIS layout.
+ * Day/Night theme toggle, auth (login/logout), and responsive three-panel WebGIS layout.
  */
 
 import { useState, useRef } from "react";
 import { LayersProvider, useLayersStore } from "./state/layersStore";
+import { AuthProvider, useAuth } from "./state/authStore";
 import LeftSidebar from "./components/layout/LeftSidebar";
 import MapView from "./components/layout/MapView";
 import RightSidebar from "./components/layout/RightSidebar";
 import Legend from "./components/panels/Legend";
 import FeatureDetails from "./components/panels/FeatureDetails";
+import AuthModal from "./components/auth/AuthModal";
 import "./index.css";
 
 function AppHeader() {
   const { layers, boundaryLayer, theme, toggleTheme } = useLayersStore();
+  const { user, isLoggedIn, isCheckingSession, logout } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const totalFeatures = layers.reduce((acc, l) => acc + (l.recordCount || 0), 0);
 
   return (
@@ -44,6 +48,30 @@ function AppHeader() {
           </span>
           <span className="app-header__status-dot" title="System Ready" />
         </div>
+
+        {/* Auth */}
+        {!isCheckingSession && (
+          isLoggedIn ? (
+            <button
+              className="theme-toggle-btn"
+              onClick={logout}
+              title={`Log out ${user.username}`}
+              id="logout-btn"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg>
+              <span>{user.username}</span>
+            </button>
+          ) : (
+            <button
+              className="theme-toggle-btn"
+              onClick={() => setShowAuthModal(true)}
+              id="login-btn"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></svg>
+              <span>Log In</span>
+            </button>
+          )
+        )}
 
         {/* Day / Night Theme Toggle */}
         <button
@@ -78,6 +106,8 @@ function AppHeader() {
           )}
         </button>
       </div>
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </header>
   );
 }
@@ -135,8 +165,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <LayersProvider>
-      <AppInner />
-    </LayersProvider>
+    <AuthProvider>
+      <LayersProvider>
+        <AppInner />
+      </LayersProvider>
+    </AuthProvider>
   );
 }
