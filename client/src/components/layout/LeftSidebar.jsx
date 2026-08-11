@@ -15,17 +15,35 @@ import { getCategoryColor } from "../../constants/categoryColors";
 import { describeGeometry } from "../../utils/geometryLabel";
 import { exportShapefile } from "../../utils/shapefileExport";
 import { exportToPdf } from "../../utils/exportToPdf";
-import { boundaryFromPoints } from "../../utils/convexHull";
+import { boundaryThroughAllPoints } from "../../utils/convexHull";
 import { saveBoundary as apiSaveBoundary, getFeatures, getBoundary } from "../../services/api";
 
 // ── Layer list ────────────────────────────────────────────────────────────────
 
 function LayerList() {
-  const { layers, activeLayerId, setActiveLayer, toggleLayerVisibility } = useLayersStore();
+  const { layers, activeLayerId, setActiveLayer, toggleLayerVisibility, removeLayer } = useLayersStore();
+  const [deletingId, setDeletingId] = useState(null);
 
   if (!layers.length) {
     return <p className="sidebar-empty">No layers yet. Upload a file to add one.</p>;
   }
+
+  const handleDelete = async (e, layer) => {
+    e.stopPropagation();
+    const label = layer.isPersisted
+      ? `Delete "${layer.name}"? This removes it from the database permanently.`
+      : `Remove "${layer.name}" from this session?`;
+    if (!window.confirm(label)) return;
+
+    setDeletingId(layer.id);
+    try {
+      await removeLayer(layer.id);
+    } catch (err) {
+      alert(`Couldn't delete layer: ${err.message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <ul className="layer-list">
@@ -52,6 +70,19 @@ function LayerList() {
             {layer.isVisible
               ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
               : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+            }
+          </button>
+          <button
+            className="layer-item__delete-btn"
+            onClick={(e) => handleDelete(e, layer)}
+            aria-label={`Delete ${layer.name}`}
+            id={`layer-delete-${layer.id}`}
+            title="Delete layer"
+            disabled={deletingId === layer.id}
+          >
+            {deletingId === layer.id
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin"><path d="M21 12a9 9 0 11-3-6.7" /></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
             }
           </button>
         </li>
@@ -103,7 +134,6 @@ export default function LeftSidebar({
         return;
       }
 
-      // Flat feature list -> grouped by layerId (each upload's shared layerId)
       const grouped = {};
       for (const f of features) {
         const lid = f.layerId || "unassigned";
@@ -115,8 +145,6 @@ export default function LeftSidebar({
         const geometryType = feats[0]?.geometry?.type || "Unknown";
         addLayer({
           id: layerId,
-          // Original upload filenames aren't stored server-side — labeled by
-          // geometry type + count instead of a recovered filename.
           name: `Saved ${describeGeometry(geometryType)} Layer`,
           geometryType,
           isPersisted: true,
@@ -147,7 +175,7 @@ export default function LeftSidebar({
       .filter((f) => f.geometry?.type === "Point")
       .map((f) => f.geometry.coordinates); // [lng, lat]
 
-    const polygon = boundaryFromPoints(points, 0);
+    const polygon = boundaryThroughAllPoints(points);
     if (!polygon) return; // fewer than 3 distinct points — nothing to enclose
 
     setBoundary(polygon);

@@ -118,7 +118,12 @@ export function LayersProvider({ children }) {
   const removeLayer = useCallback(async (layerId) => {
     const layer = state.layers.find((l) => l.id === layerId);
     if (layer?.isPersisted) {
-      await apiDeleteLayer(layerId).catch(console.error);
+      try {
+        await apiDeleteLayer(layerId);
+      } catch (err) {
+        console.error(err);
+        throw err; // don't remove locally if the backend delete failed
+      }
     }
     dispatch({ type: REMOVE_LAYER, payload: layerId });
   }, [state.layers]);
