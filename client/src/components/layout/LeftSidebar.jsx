@@ -147,7 +147,7 @@ export default function LeftSidebar({
       .filter((f) => f.geometry?.type === "Point")
       .map((f) => f.geometry.coordinates); // [lng, lat]
 
-    const polygon = boundaryFromPoints(points, 0.12);
+    const polygon = boundaryFromPoints(points, 0);
     if (!polygon) return; // fewer than 3 distinct points — nothing to enclose
 
     setBoundary(polygon);
