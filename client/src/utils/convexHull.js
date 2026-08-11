@@ -62,3 +62,32 @@ export function boundaryFromPoints(points, paddingRatio = 0.12) {
 
     return { type: "Polygon", coordinates: [ring] };
 }
+
+/**
+ * Builds a polygon that visits EVERY input point (not just hull extremes),
+ * ordered by angle around the centroid so the resulting ring doesn't
+ * self-intersect. Use this when you want a boundary that traces the
+ * actual survey points rather than a convex hull that skips interior ones.
+ *
+ * Trade-off: a single stray/misplaced point will visibly spike the shape,
+ * since every point is forced to be a vertex — unlike convexHull(), which
+ * can smooth over outliers by simply not using them.
+ */
+export function boundaryThroughAllPoints(points) {
+    const pts = Array.from(new Set(points.map((p) => p.join(","))))
+        .map((s) => s.split(",").map(Number));
+
+    if (pts.length < 3) return null;
+
+    const cx = pts.reduce((sum, [x]) => sum + x, 0) / pts.length;
+    const cy = pts.reduce((sum, [, y]) => sum + y, 0) / pts.length;
+
+    const ordered = [...pts].sort((a, b) => {
+        const angA = Math.atan2(a[1] - cy, a[0] - cx);
+        const angB = Math.atan2(b[1] - cy, b[0] - cx);
+        return angA - angB;
+    });
+
+    const ring = [...ordered, ordered[0]]; // close the ring
+    return { type: "Polygon", coordinates: [ring] };
+}

@@ -11,7 +11,13 @@ import L from "leaflet";
 import { useLayersStore } from "../../state/layersStore";
 import { getCategoryColor } from "../../constants/categoryColors";
 
-/** Build a custom Leaflet marker icon with subtle shadow and selection glow. */
+/**
+ * Build a custom Leaflet marker icon with subtle shadow and selection glow.
+ * Rendered as a base64 data-URI <img> (not raw inline <svg>) so that
+ * html2canvas — used for PDF export — can actually capture it. html2canvas
+ * has known gaps rendering inline SVG DOM nodes, especially ones using the
+ * `filter` attribute; wrapping as an <img> avoids that entirely.
+ */
 function makeIcon(color, selected) {
   const size = selected ? 26 : 22;
   const shadowFilter = selected
@@ -19,18 +25,20 @@ function makeIcon(color, selected) {
     : `filter="drop-shadow(0 2px 4px rgba(0,0,0,0.25))"`;
 
   const pulseRing = selected
-    ? `<circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="none" stroke="#125E4C" stroke-width="2.5" opacity="0.8"/>`
+    ? `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="none" stroke="#125E4C" stroke-width="2.5" opacity="0.8"/>`
     : "";
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" ${shadowFilter}>
       ${pulseRing}
-      <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="${color}" stroke="#FFFFFF" stroke-width="2.5"/>
-      <circle cx="${size/2}" cy="${size/2}" r="3" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${color}" stroke="#FFFFFF" stroke-width="2.5"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="3" fill="#FFFFFF" opacity="0.9"/>
     </svg>`;
 
+  const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+
   return L.divIcon({
-    html: svg,
+    html: `<img src="${dataUrl}" width="${size}" height="${size}" style="display:block" alt="" />`,
     className: "",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
