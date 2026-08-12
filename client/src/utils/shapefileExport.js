@@ -4,9 +4,11 @@
  * Uses shp-write to generate the shapefile bundle.
  *
  * DBF column name limit: 10 characters max — uses internal field names from fieldLabels.
+ *
+ * shp-write is dynamically imported inside exportShapefile() rather than at
+ * the top of this file, so it's only fetched when someone actually clicks
+ * "Export Shapefile" — keeps it out of the initial page-load bundle.
  */
-
-import shpwrite from "shp-write";
 
 /**
  * Convert a feature's geometry to a GeoJSON Feature object.
@@ -17,11 +19,11 @@ function toGeoJSONFeature(feature) {
     type: "Feature",
     geometry: feature.geometry,
     properties: {
-      point_id:   (feature.feature_id || feature.id || "").toString().slice(0, 10),
+      point_id: (feature.feature_id || feature.id || "").toString().slice(0, 10),
       point_name: (feature.name || "").slice(0, 100),
-      category:   (feature.category || "").slice(0, 10),
-      descr:      (feature.descr || feature.description || "").slice(0, 100),
-      layer_id:   (feature.layerId || "").slice(0, 10),
+      category: (feature.category || "").slice(0, 10),
+      descr: (feature.descr || feature.description || "").slice(0, 100),
+      layer_id: (feature.layerId || "").slice(0, 10),
     },
   };
 }
@@ -57,13 +59,14 @@ export async function exportShapefile(layers, filename = "export") {
     outputType: "blob",
     compression: "DEFLATE",
     types: {
-      point:   filename,
+      point: filename,
       polygon: filename,
-      line:    filename,
+      line: filename,
     },
   };
 
   try {
+    const shpwrite = (await import("@mapbox/shp-write")).default;
     const blob = await shpwrite.zip(geojson, options);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
