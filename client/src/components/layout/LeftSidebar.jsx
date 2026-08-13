@@ -182,7 +182,32 @@ export default function LeftSidebar({
     apiSaveBoundary(polygon).catch(console.error);
   };
 
-  const handleExportShp = () => exportShapefile(layers, "webgis_export");
+  const handleExportShp = () => {
+    let layersToExport = [...layers];
+
+    if (boundaryVisible && boundaryLayer) {
+      layersToExport.push({
+        id: "boundary_layer_export",
+        name: "Area Boundary",
+        geometryType: "Polygon",
+        isVisible: true,
+        features: [
+          {
+            type: "Feature",
+            geometry: boundaryLayer,
+            properties: {
+              Point_ID: "BOUND_1",
+              Point_Name: "Area Boundary",
+              Category: "Boundary",
+              Description: "Faculty of Science Area Boundary Polygon",
+            },
+          },
+        ],
+      });
+    }
+
+    exportShapefile(layersToExport, "webgis_export");
+  };
 
   const handleExportPdf = () =>
     exportToPdf({
