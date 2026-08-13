@@ -5,14 +5,17 @@
  *   - Night Mode: Esri World Imagery (Satellite View)
  * Includes mouse coordinate tracker, FeatureLayer rendering,
  * BoundaryDrawTool, and PointForm floating panel.
+ *
+ * Deliberately does NOT auto-load saved features/boundary from the backend
+ * on mount — every visitor should see a clean map. Loading persisted data
+ * is a manual action via LeftSidebar's "Load Saved Data" button.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MapContainer, TileLayer, ZoomControl, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { useEffect } from "react";
 import { useLayersStore } from "../../state/layersStore";
-import { getFeatures, getBoundary } from "../../services/api";
-import { inferGeometryType } from "../../utils/geometryLabel";
 import FeatureLayer from "../map/FeatureLayer";
 import BoundaryDrawTool from "../map/BoundaryDrawTool";
 import PointForm from "../map/PointForm";
@@ -57,49 +60,8 @@ function MapInstancePublisher() {
 }
 
 export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDrawEnd, onPointFormClose }) {
-  const { layers, addLayer, setBoundary, theme } = useLayersStore();
+  const { layers, theme } = useLayersStore();
   const [mapReady, setMapReady] = useState(false);
-
-  // Load persisted data from the backend on first mount
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadFromDB() {
-      try {
-        const boundary = await getBoundary();
-        if (boundary?.geometry && !cancelled) setBoundary(boundary.geometry);
-      } catch (_) { }
-
-      try {
-        const features = await getFeatures();
-        if (!features?.length || cancelled) return;
-
-        const layerMap = {};
-        for (const f of features) {
-          const lid = f.layerId || "default";
-          if (!layerMap[lid]) layerMap[lid] = [];
-          layerMap[lid].push({ ...f, isPersisted: true });
-        }
-
-        for (const [lid, feats] of Object.entries(layerMap)) {
-          addLayer({
-            id: lid,
-            name: feats[0]?.layerName || `Layer ${lid.slice(-4)}`,
-            geometryType: inferGeometryType(feats.map((f) => ({ geometry: f.geometry }))),
-            isPersisted: true,
-            isVisible: true,
-            color: "#1D6E5A",
-            features: feats,
-            recordCount: feats.length,
-          });
-        }
-      } catch (_) { }
-    }
-
-    loadFromDB();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="map-view" id="map-view">
