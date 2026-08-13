@@ -8,7 +8,10 @@
  *   - Scale bar
  *   - Legend table
  *
- * Uses html2canvas to screenshot the map div and jsPDF to build the PDF.
+ * html2canvas and jsPDF are dynamically imported inside exportToPdf()
+ * rather than at the top of this file, so they're only fetched when
+ * someone actually clicks "Export PDF" — keeps them out of the initial
+ * page-load bundle.
  */
 
 import html2canvas from "html2canvas";
@@ -32,6 +35,12 @@ const MARGIN = 12;
  */
 export async function exportToPdf({ title = "WebGIS Map", layers, mapEl, boundary, mapInstance }) {
   if (!mapEl) { alert("Map not ready."); return; }
+
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+
 
   // ── 0. Critical extent rule: fit map to boundary before capture ────────
   let previousView = null;
