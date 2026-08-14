@@ -59,9 +59,95 @@ function MapInstancePublisher() {
   return null;
 }
 
+/** Map Dock Controls & Telemetry Overlay */
+function MapDockOverlay({ mapTileType, setMapTileType }) {
+  const map = useMap();
+
+  const handleResetView = () => {
+    map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 1.2 });
+  };
+
+  const handleToggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => { });
+    } else {
+      document.exitFullscreen().catch(() => { });
+    }
+  };
+
+  return (
+    <>
+      <div className="map-overlay-dock" id="map-dock">
+        <button
+          className={`map-dock-btn ${mapTileType === "google-street" ? "map-dock-btn--active" : ""}`}
+          onClick={() => setMapTileType("google-street")}
+          title="Street Vector Basemap"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+            <line x1="8" y1="2" x2="8" y2="18" />
+            <line x1="16" y1="6" x2="16" y2="22" />
+          </svg>
+          <span>Streets</span>
+        </button>
+
+        <button
+          className={`map-dock-btn ${mapTileType === "google-sat" ? "map-dock-btn--active" : ""}`}
+          onClick={() => setMapTileType("google-sat")}
+          title="Satellite Imagery"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 2a14.5 14.5 0 000 20M2 12h20" />
+          </svg>
+          <span>Satellite</span>
+        </button>
+
+        <button
+          className="map-dock-btn"
+          onClick={handleResetView}
+          title="Reset Map Bounds"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          <span>Reset View</span>
+        </button>
+
+        <button
+          className="map-dock-btn"
+          onClick={handleToggleFullscreen}
+          title="Toggle Fullscreen Mode"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+          </svg>
+          <span>Fullscreen</span>
+        </button>
+      </div>
+
+      <div className="map-telemetry-hud" id="map-telemetry-hud">
+        <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#10B981", boxShadow: "0 0 8px #10B981" }} />
+        <span>SPATIAL ENGINE: 60 FPS</span>
+      </div>
+    </>
+  );
+}
+
 export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDrawEnd, onPointFormClose }) {
   const { layers, theme } = useLayersStore();
   const [mapReady, setMapReady] = useState(false);
+  const [mapTileType, setMapTileType] = useState("auto"); // "auto" | "google-street" | "google-sat"
+
+  const getTileUrl = () => {
+    if (mapTileType === "google-sat") {
+      return "https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"; // Satellite Hybrid
+    }
+    return "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"; // Street Map
+  };
+
+  const isDarkModeTile = mapTileType === "google-sat" ? false : theme === "dark";
 
   return (
     <div className="map-view" id="map-view">
@@ -73,28 +159,25 @@ export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDr
         whenReady={() => setMapReady(true)}
         id="leaflet-map"
       >
-        {/* Base Map Layer: Google Maps (CSS filters apply for dark mode) */}
-        {theme === "dark" ? (
-          <TileLayer
-            key="google-map-dark"
-            url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-            attribution="&copy; Google Maps"
-            maxZoom={20}
-            className="map-tile-layer"
-          />
-        ) : (
-          <TileLayer
-            key="google-map-light"
-            url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-            attribution="&copy; Google Maps"
-            maxZoom={20}
-            className="map-tile-layer-light"
-          />
-        )}
+        <TileLayer
+          key={`${theme}-${mapTileType}`}
+          url={getTileUrl()}
+          attribution="&copy; Google Maps"
+          maxZoom={20}
+          className={isDarkModeTile ? "map-tile-layer" : "map-tile-layer-light"}
+        />
 
         <MapInstancePublisher />
         <ZoomControl position="bottomright" />
         <CoordinateTracker />
+
+        {/* Floating Map Dock & Telemetry HUD */}
+        {mapReady && (
+          <MapDockOverlay
+            mapTileType={mapTileType === "auto" ? (theme === "dark" ? "google-street" : "google-street") : mapTileType}
+            setMapTileType={setMapTileType}
+          />
+        )}
 
         {/* Render visible feature layers */}
         {mapReady && layers.map((layer) => (

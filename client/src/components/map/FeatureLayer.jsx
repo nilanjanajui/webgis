@@ -97,8 +97,9 @@ function getPointDisplayName(feature) {
 
 export default function FeatureLayer({ layer }) {
   const map = useMap();
-  const { selectedFeatureId, setSelectedFeature } = useLayersStore();
+  const { selectedFeatureId, setSelectedFeature, activeLayerId } = useLayersStore();
   const groupRef = useRef(null);
+  const prevActiveLayerIdRef = useRef(null);
 
   useEffect(() => {
     if (!layer.isVisible) {
@@ -166,6 +167,43 @@ export default function FeatureLayer({ layer }) {
     // Re-render whenever visibility, features, or selection changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer, layer.isVisible, selectedFeatureId]);
+
+  // Auto-zoom map to layer features when file is uploaded or layer is selected
+  useEffect(() => {
+    if (!layer.isVisible || !layer.features?.length) return;
+    if (activeLayerId !== layer.id) return;
+    if (prevActiveLayerIdRef.current === activeLayerId) return;
+
+    prevActiveLayerIdRef.current = activeLayerId;
+
+    const points = [];
+    for (const f of layer.features) {
+      if (!f.geometry) continue;
+      if (f.geometry.type === "Point") {
+        const [lng, lat] = f.geometry.coordinates;
+        if (!isNaN(lat) && !isNaN(lng)) points.push([lat, lng]);
+      } else {
+        try {
+          const lBounds = L.geoJSON({ type: "Feature", geometry: f.geometry }).getBounds();
+          if (lBounds.isValid()) {
+            points.push(lBounds.getSouthWest());
+            points.push(lBounds.getNorthEast());
+          }
+        } catch (_) { }
+      }
+    }
+
+    if (points.length > 0) {
+      if (points.length === 1) {
+        map.setView(points[0], 16, { animate: true });
+      } else {
+        const bounds = L.latLngBounds(points);
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16, animate: true });
+        }
+      }
+    }
+  }, [activeLayerId, layer.id, layer.features, layer.isVisible, map]);
 
   // Pan/zoom to selected feature when selection changes from the table
   useEffect(() => {

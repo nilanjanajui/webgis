@@ -16,7 +16,7 @@ import { describeGeometry } from "../../utils/geometryLabel";
 import { exportShapefile } from "../../utils/shapefileExport";
 import { exportToPdf } from "../../utils/exportToPdf";
 import { boundaryThroughAllPoints } from "../../utils/convexHull";
-import { saveBoundary as apiSaveBoundary, getFeatures, getBoundary } from "../../services/api";
+import { saveBoundary as apiSaveBoundary, getFeatures, getBoundary, createBatchFeatures } from "../../services/api";
 
 // ── Layer list ────────────────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ export default function LeftSidebar({
   onToggleAddPoint,
   mapElRef,
 }) {
-  const { layers, boundaryLayer, boundaryVisible, mapInstance, addLayer, setBoundary, toggleBoundaryVisibility } = useLayersStore();
+  const { layers, activeLayerId, boundaryLayer, boundaryVisible, mapInstance, addLayer, setBoundary, toggleBoundaryVisibility } = useLayersStore();
   const { isLoggedIn } = useAuth();
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -142,29 +142,27 @@ export default function LeftSidebar({
           grouped[lid].push(f);
         }
 
-        Object.entries(grouped).forEach(([layerId, feats]) => {
-          const geometryType = feats[0]?.geometry?.type || "Unknown";
+        for (const [lid, feats] of Object.entries(grouped)) {
+          const geomType = feats[0]?.geometry?.type || "Point";
           addLayer({
-            id: layerId,
-            name: `Saved ${describeGeometry(geometryType)} Layer`,
-            geometryType,
+            id: lid,
+            name: feats[0]?.layerName || (lid === "unassigned" ? "Loaded Layer" : lid),
+            geometryType: geomType,
             isPersisted: true,
             isVisible: true,
-            color: "#FF3B30",
             features: feats.map((f) => ({ ...f, id: f._id || f.feature_id, isPersisted: true })),
             recordCount: feats.length,
           });
-        });
-        count += features.length;
+          count += feats.length;
+        }
       }
 
       if (boundary?.geometry) {
         setBoundary(boundary.geometry);
-        count += 1;
       }
 
-      if (count === 0) {
-        setLoadError("No saved data found for your account.");
+      if (count === 0 && !boundary) {
+        setLoadError("No saved data found in your database.");
       }
     } catch (err) {
       setLoadError(err.message);
@@ -173,21 +171,63 @@ export default function LeftSidebar({
     }
   };
 
-  const pointCount = layers
-    .flatMap((l) => l.features || [])
-    .filter((f) => f.geometry?.type === "Point").length;
+  const activeLayer = layers.find((l) => l.id === activeLayerId);
+  const activePoints = (activeLayer?.features || []).filter((f) => f.geometry?.type === "Point");
+  const pointCount = activePoints.length;
 
   const handleGenerateBoundary = async () => {
-    const points = layers
-      .flatMap((l) => l.features || [])
-      .filter((f) => f.geometry?.type === "Point")
-      .map((f) => f.geometry.coordinates); // [lng, lat]
+    if (!activeLayer) {
+      alert("Please select a layer first to generate its boundary.");
+      return;
+    }
 
+    const points = activePoints.map((f) => f.geometry.coordinates); // [lng, lat]
     const polygon = boundaryThroughAllPoints(points);
-    if (!polygon) return; // fewer than 3 distinct points — nothing to enclose
+    if (!polygon) {
+      alert(`The selected layer "${activeLayer.name}" requires at least 3 distinct point features to generate a boundary polygon.`);
+      return;
+    }
 
+    const boundaryLayerId = `layer_boundary_${Date.now()}`;
+    const boundaryLayerName = `${activeLayer.name} Boundary`;
+
+    const featureObj = {
+      id: `feat_${Math.random().toString(36).slice(2)}`,
+      name: boundaryLayerName,
+      category: "Boundary",
+      geometry: polygon,
+      layerId: boundaryLayerId,
+      isPersisted: isLoggedIn,
+    };
+
+    const newLayer = {
+      id: boundaryLayerId,
+      name: boundaryLayerName,
+      geometryType: "Polygon",
+      isPersisted: isLoggedIn,
+      isVisible: true,
+      color: "#F97316",
+      features: [featureObj],
+      recordCount: 1,
+    };
+
+    // Save as layer so multiple boundaries can coexist and be saved
+    addLayer(newLayer);
     setBoundary(polygon);
-    apiSaveBoundary(polygon).catch(console.error);
+
+    if (isLoggedIn) {
+      try {
+        await createBatchFeatures([
+          {
+            ...featureObj,
+            layerName: boundaryLayerName,
+          },
+        ]);
+        await apiSaveBoundary(polygon).catch(() => { });
+      } catch (err) {
+        console.error("Failed to save boundary layer to database:", err);
+      }
+    }
   };
 
   const handleExportShp = () => {
@@ -288,9 +328,17 @@ export default function LeftSidebar({
           <ToolBtn
             id="tool-generate-boundary"
             icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3l4 15 5-6 6-5-15-4z" /></svg>}
-            label={!isLoggedIn ? "Log In to Generate Boundary" : pointCount < 3 ? "Generate Boundary (needs 3+ points)" : "Generate Boundary from Points"}
+            label={
+              !isLoggedIn
+                ? "Log In to Generate Boundary"
+                : !activeLayer
+                  ? "Select a Layer to Generate Boundary"
+                  : pointCount < 3
+                    ? "Generate Boundary (selected layer needs 3+ points)"
+                    : `Generate Boundary (${activeLayer.name})`
+            }
             onClick={handleGenerateBoundary}
-            disabled={!isLoggedIn || pointCount < 3}
+            disabled={!isLoggedIn || !activeLayer || pointCount < 3}
           />
           <ToolBtn
             id="tool-toggle-boundary"
