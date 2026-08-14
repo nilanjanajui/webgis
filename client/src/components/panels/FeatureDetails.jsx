@@ -16,6 +16,35 @@ const SKIP = new Set(["id", "layerId", "isPersisted", "geometry"]);
 /** Fields that contain coordinates — render in monospace */
 const COORD_FIELDS = new Set(["latitude", "longitude"]);
 
+function getPointDisplayName(feature) {
+  if (!feature) return "Unnamed Feature";
+  if (feature.name && String(feature.name).trim()) return String(feature.name).trim();
+  if (feature.point_name && String(feature.point_name).trim()) return String(feature.point_name).trim();
+
+  for (const [key, val] of Object.entries(feature)) {
+    if (val === null || val === undefined || val === "") continue;
+    const k = key.trim().toLowerCase().replace(/[\s_\-\.]+/g, "");
+    if (
+      [
+        "name",
+        "pointname",
+        "pntname",
+        "sitename",
+        "location",
+        "label",
+        "title",
+        "place",
+        "station",
+        "site"
+      ].includes(k)
+    ) {
+      return String(val).trim();
+    }
+  }
+
+  return feature.feature_id || feature.point_id || "Unnamed Feature";
+}
+
 export default function FeatureDetails() {
   const { layers, selectedFeatureId, setSelectedFeature } = useLayersStore();
 
@@ -63,7 +92,7 @@ export default function FeatureDetails() {
       {/* Header */}
       <div className="feat-details__header" style={{ borderLeft: `4px solid ${color}` }}>
         <div>
-          <p className="feat-details__name">{selectedFeature.name || selectedFeature.point_name || selectedFeature.feature_id || "Unnamed Feature"}</p>
+          <p className="feat-details__name">{getPointDisplayName(selectedFeature)}</p>
           <p className="feat-details__meta">
             <span className="feat-details__cat-dot" style={{ background: color }} />
             {selectedFeature.category || "—"}

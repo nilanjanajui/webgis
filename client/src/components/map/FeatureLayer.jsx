@@ -58,6 +58,35 @@ function vectorStyle(color, selected) {
   };
 }
 
+function getPointDisplayName(feature) {
+  if (!feature) return "Feature";
+  if (feature.name && String(feature.name).trim()) return String(feature.name).trim();
+  if (feature.point_name && String(feature.point_name).trim()) return String(feature.point_name).trim();
+
+  for (const [key, val] of Object.entries(feature)) {
+    if (val === null || val === undefined || val === "") continue;
+    const k = key.trim().toLowerCase().replace(/[\s_\-\.]+/g, "");
+    if (
+      [
+        "name",
+        "pointname",
+        "pntname",
+        "sitename",
+        "location",
+        "label",
+        "title",
+        "place",
+        "station",
+        "site"
+      ].includes(k)
+    ) {
+      return String(val).trim();
+    }
+  }
+
+  return feature.feature_id || feature.point_id || "Feature";
+}
+
 export default function FeatureLayer({ layer }) {
   const map = useMap();
   const { selectedFeatureId, setSelectedFeature } = useLayersStore();
@@ -103,7 +132,7 @@ export default function FeatureLayer({ layer }) {
         });
       }
 
-      leafletLayer.bindTooltip(feature.name || feature.point_name || feature.feature_id || "Feature", {
+      leafletLayer.bindTooltip(getPointDisplayName(feature), {
         permanent: false,
         direction: "top",
         className: "leaflet-tooltip-webgis",

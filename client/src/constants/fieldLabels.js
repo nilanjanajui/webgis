@@ -33,39 +33,18 @@ export function getFieldLabel(key) {
 export const INTERNAL_FIELD_MAP = {
   "point id": "point_id",
   "pointid": "point_id",
-  "pnt_id": "point_id",
-  "pntid": "point_id",
   "id": "point_id",
-  "fid": "point_id",
-  "objectid": "point_id",
-
   "point name": "point_name",
   "pointname": "point_name",
-  "pnt_name": "point_name",
-  "pntname": "point_name",
   "name": "point_name",
-  "location": "point_name",
-  "label": "point_name",
-  "site_name": "point_name",
-  "sitename": "point_name",
-  "site": "point_name",
-  "title": "point_name",
-  "place": "point_name",
-  "station": "point_name",
-
   "lat": "latitude",
   "latitude": "latitude",
-  "y": "latitude",
-
   "lng": "longitude",
   "long": "longitude",
   "longitude": "longitude",
-  "x": "longitude",
-
   "cat": "category",
   "category": "category",
   "type": "category",
-
   "description": "descr",
   "desc": "descr",
   "descr": "descr"
