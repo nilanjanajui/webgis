@@ -29,7 +29,7 @@ function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted) {
     geometryType: geojson.features[0]?.geometry?.type || "Unknown",
     isPersisted,
     isVisible: true,
-    color: "#1D6E5A",
+    color: "#FF3B30",
     features: geojson.features.map((f) => ({
       ...(f.properties || {}),
       id: f.properties?.id || `feat_${Math.random().toString(36).slice(2)}`,

@@ -4,14 +4,12 @@
  */
 
 export const PALETTE = {
-  ink: "#2B2B28",
-  paper: "#F7F5F0",
-  teal: "#1D6E5A",
-  coral: "#C85A3C",
-  slate: "#5B6B66",
-  amber: "#D68A2E",
-  mist: "#E8E4DC",
-  fog: "#C8C4BA",
+  brightRed: "#FF3B30",
+  orange: "#FF7A00",
+  amber: "#FFB703",
+  coral: "#FF4500",
+  magenta: "#FF2D55",
+  teal: "#00C49F",
 };
 
 /**
@@ -19,13 +17,13 @@ export const PALETTE = {
  * Used for styling map markers and legend swatches.
  */
 export const CATEGORY_COLORS = {
-  Building: "#1D6E5A",       // teal
-  "Access Point": "#C85A3C", // coral
-  Landmark: "#D68A2E",       // amber
-  Facility: "#5B6B66",       // slate
-  Road: "#2B2B28",           // ink
-  Boundary: "#1D6E5A",       // teal (boundary layer)
-  Default: "#5B6B66",        // slate fallback
+  Building: "#FF3B30",       // Bright Red
+  "Access Point": "#FF7A00", // Bright Orange
+  Landmark: "#FFB703",       // Bright Amber
+  Facility: "#FF2D55",       // Vivid Magenta/Red
+  Road: "#FF4500",           // Vivid Red-Orange
+  Boundary: "#FF5722",       // Bright Coral Red
+  Default: "#FF3B30",        // Vivid Red default fallback
 };
 
 /**
