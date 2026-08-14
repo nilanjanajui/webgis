@@ -150,7 +150,7 @@ export default function LeftSidebar({
             geometryType,
             isPersisted: true,
             isVisible: true,
-            color: "#1D6E5A",
+            color: "#FF3B30",
             features: feats.map((f) => ({ ...f, id: f._id || f.feature_id, isPersisted: true })),
             recordCount: feats.length,
           });

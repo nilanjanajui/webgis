@@ -19,20 +19,27 @@ import { getCategoryColor } from "../../constants/categoryColors";
  * `filter` attribute; wrapping as an <img> avoids that entirely.
  */
 function makeIcon(color, selected) {
-  const size = selected ? 26 : 22;
+  const size = selected ? 32 : 24;
+  const fillColor = selected
+    ? "#FF2D55"
+    : color && color !== "#1D6E5A" && color !== "#5B6B66"
+    ? color
+    : "#FF3B30";
+
   const shadowFilter = selected
-    ? `filter="drop-shadow(0 4px 8px rgba(18,94,76,0.5))"`
-    : `filter="drop-shadow(0 2px 4px rgba(0,0,0,0.25))"`;
+    ? `filter="drop-shadow(0 0 10px rgba(255, 45, 85, 0.95)) drop-shadow(0 4px 10px rgba(0,0,0,0.6))"`
+    : `filter="drop-shadow(0 3px 6px rgba(0,0,0,0.45))"`;
 
   const pulseRing = selected
-    ? `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="none" stroke="#125E4C" stroke-width="2.5" opacity="0.8"/>`
+    ? `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="none" stroke="#FFD600" stroke-width="3" opacity="0.95"/>
+       <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 5}" fill="none" stroke="#FF2D55" stroke-width="2.5" opacity="0.9"/>`
     : "";
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" ${shadowFilter}>
       ${pulseRing}
-      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${color}" stroke="#FFFFFF" stroke-width="2.5"/>
-      <circle cx="${size / 2}" cy="${size / 2}" r="3" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 5}" fill="${fillColor}" stroke="#FFFFFF" stroke-width="3"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="3.5" fill="#FFFFFF" opacity="0.95"/>
     </svg>`;
 
   const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
@@ -48,12 +55,13 @@ function makeIcon(color, selected) {
 
 /** Style factory for lines and polygons. */
 function vectorStyle(color, selected) {
+  const baseColor = color && color !== "#1D6E5A" && color !== "#5B6B66" ? color : "#FF3B30";
   return {
-    color: selected ? "#125E4C" : color,
-    weight: selected ? 3.5 : 2.5,
+    color: selected ? "#FF2D55" : baseColor,
+    weight: selected ? 4 : 2.5,
     opacity: selected ? 1 : 0.85,
-    fillColor: color,
-    fillOpacity: selected ? 0.35 : 0.18,
+    fillColor: selected ? "#FF2D55" : baseColor,
+    fillOpacity: selected ? 0.45 : 0.25,
     dashArray: selected ? "6, 6" : undefined,
   };
 }
