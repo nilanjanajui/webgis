@@ -1,10 +1,10 @@
 const Feature = require('../models/Feature');
 const { toGeoJSONCoords, fromGeoJSONCoords } = require('../utils/geo');
 
-// Get all standard features
+// Get all standard features for the logged-in user
 exports.getAllFeatures = async (req, res) => {
   try {
-    const features = await Feature.find({ layer_type: 'feature' });
+    const features = await Feature.find({ layer_type: 'feature', createdBy: req.user.username });
     res.json(features);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -31,7 +31,7 @@ exports.updateFeature = async (req, res) => {
     const featureId = req.params.id;
     // We update based on the custom feature_id if provided, else fall back to _id
     const updated = await Feature.findOneAndUpdate(
-      { $or: [{ feature_id: featureId }, { _id: featureId }], layer_type: 'feature' },
+      { $or: [{ feature_id: featureId }, { _id: featureId }], layer_type: 'feature', createdBy: req.user.username },
       req.body,
       { new: true }
     );
@@ -49,7 +49,8 @@ exports.deleteFeature = async (req, res) => {
     const featureId = req.params.id;
     const deleted = await Feature.findOneAndDelete({
       $or: [{ feature_id: featureId }, { _id: featureId }],
-      layer_type: 'feature'
+      layer_type: 'feature',
+      createdBy: req.user.username
     });
 
     if (!deleted) return res.status(404).json({ error: 'Feature not found' });
@@ -79,7 +80,7 @@ exports.createBatchFeatures = async (req, res) => {
 exports.deleteLayer = async (req, res) => {
   try {
     const { layerId } = req.params;
-    const result = await Feature.deleteMany({ layerId, layer_type: 'feature' });
+    const result = await Feature.deleteMany({ layerId, layer_type: 'feature', createdBy: req.user.username });
     res.status(204).send();
   } catch (err) {
     res.status(400).json({ error: err.message });
