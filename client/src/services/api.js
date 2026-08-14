@@ -28,7 +28,12 @@ async function request(method, path, body = null) {
   const options = { method, headers };
   if (body) options.body = JSON.stringify(body);
 
-  const res = await fetch(`${BASE_URL}${path}`, options);
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, options);
+  } catch (netErr) {
+    throw new Error("Unable to connect to backend server (port 5000). Please verify server is running.");
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
@@ -134,4 +139,12 @@ export async function getBoundary() {
  */
 export async function saveBoundary(geojsonPolygon) {
   return request("POST", "/boundary", { geometry: geojsonPolygon });
+}
+
+/**
+ * Delete the saved boundary polygon from database. Requires login.
+ * @returns {Promise<null>}
+ */
+export async function deleteBoundary() {
+  return request("DELETE", "/boundary");
 }

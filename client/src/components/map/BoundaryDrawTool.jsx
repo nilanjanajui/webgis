@@ -14,29 +14,31 @@ import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useLayersStore } from "../../state/layersStore";
-import { saveBoundary as apiSaveBoundary } from "../../services/api";
+import { useAuth } from "../../state/authStore";
+import { saveBoundary as apiSaveBoundary, createBatchFeatures } from "../../services/api";
 
 /** Boundary style constants */
 const BOUNDARY_STYLE = {
-  color: "#1D6E5A",
-  weight: 2.5,
-  opacity: 0.85,
+  color: "#F97316",
+  weight: 3,
+  opacity: 0.95,
   dashArray: "8 5",
-  fillColor: "#1D6E5A",
-  fillOpacity: 0.06,
+  fillColor: "#f9741644",
+  fillOpacity: 0.05,
 };
 
 const VERTEX_STYLE = {
-  radius: 5,
-  color: "#1D6E5A",
-  fillColor: "#fff",
+  radius: 6,
+  color: "#F97316",
+  fillColor: "#ffffff",
   fillOpacity: 1,
-  weight: 2,
+  weight: 2.5,
 };
 
 export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
   const map = useMap();
-  const { boundaryLayer, boundaryVisible, setBoundary } = useLayersStore();
+  const { boundaryLayer, boundaryVisible, setBoundary, addLayer, layers } = useLayersStore();
+  const { isLoggedIn } = useAuth();
 
   const polylineRef = useRef(null);   // live preview polyline while drawing
   const verticesRef = useRef([]);     // [LatLng] of clicked vertices
@@ -93,10 +95,10 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       if (polylineRef.current) map.removeLayer(polylineRef.current);
       if (verticesRef.current.length > 1) {
         polylineRef.current = L.polyline(verticesRef.current, {
-          color: "#1D6E5A",
-          weight: 2,
+          color: "#F97316",
+          weight: 2.5,
           dashArray: "6 4",
-          opacity: 0.7,
+          opacity: 0.85,
         }).addTo(map);
       }
     };
@@ -131,7 +133,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
 
   async function finishPolygon() {
     const verts = verticesRef.current;
-    
+
     // Deduplicate consecutive identical/near-identical vertices (e.g. from double-click event ordering)
     const uniqueVerts = [];
     for (const v of verts) {
@@ -152,17 +154,49 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
     coords.push(coords[0]); // close ring
     const polygon = { type: "Polygon", coordinates: [coords] };
 
-    // Save to local store so boundary renders immediately
+    const boundaryLayerId = `layer_boundary_drawn_${Date.now()}`;
+    const boundaryCount = (layers || []).filter((l) => l.name?.toLowerCase().includes("boundary")).length + 1;
+    const boundaryLayerName = `Custom Boundary ${boundaryCount}`;
+
+    const featureObj = {
+      id: `feat_${Math.random().toString(36).slice(2)}`,
+      name: boundaryLayerName,
+      category: "Boundary",
+      geometry: polygon,
+      layerId: boundaryLayerId,
+      isPersisted: isLoggedIn,
+    };
+
+    const newLayer = {
+      id: boundaryLayerId,
+      name: boundaryLayerName,
+      geometryType: "Polygon",
+      isPersisted: isLoggedIn,
+      isVisible: true,
+      color: "#F97316",
+      features: [featureObj],
+      recordCount: 1,
+    };
+
+    addLayer(newLayer);
     setBoundary(polygon);
 
     cleanup();
     onDrawEnd?.();
 
     // Persist to backend
-    try {
-      await apiSaveBoundary(polygon);
-    } catch (err) {
-      console.error("Failed to save boundary to backend:", err);
+    if (isLoggedIn) {
+      try {
+        await createBatchFeatures([
+          {
+            ...featureObj,
+            layerName: boundaryLayerName,
+          },
+        ]);
+        await apiSaveBoundary(polygon).catch(() => { });
+      } catch (err) {
+        console.error("Failed to save boundary to backend:", err);
+      }
     }
   }
 

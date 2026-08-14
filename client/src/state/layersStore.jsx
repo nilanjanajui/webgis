@@ -5,7 +5,7 @@
  */
 
 import { createContext, useContext, useReducer, useCallback, useEffect } from "react";
-import { deleteLayer as apiDeleteLayer } from "../services/api";
+import { deleteLayer as apiDeleteLayer, deleteBoundary as apiDeleteBoundary } from "../services/api";
 
 const getSavedTheme = () => {
   if (typeof window !== "undefined" && window.localStorage) {
@@ -68,6 +68,7 @@ function reducer(state, action) {
         layers: state.layers.filter((l) => l.id !== action.payload),
         activeLayerId: state.activeLayerId === action.payload ? null : state.activeLayerId,
         selectedFeatureId: null,
+        boundaryLayer: null,
       };
 
     case TOGGLE_LAYER_VISIBILITY:
@@ -138,6 +139,9 @@ export function LayersProvider({ children }) {
     if (layer?.isPersisted) {
       try {
         await apiDeleteLayer(layerId);
+        try {
+          await apiDeleteBoundary();
+        } catch (_) {}
       } catch (err) {
         console.error(err);
         throw err; // don't remove locally if the backend delete failed
