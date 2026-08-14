@@ -3,8 +3,8 @@ const router = express.Router();
 const featuresController = require('../controllers/featuresController');
 const requireAuth = require('../middleware/auth');
 
-// GET all features — public, no login required
-router.get('/', featuresController.getAllFeatures);
+// GET all features — requires login for user data isolation
+router.get('/', requireAuth, featuresController.getAllFeatures);
 
 // POST create new feature(s) — requires login
 router.post('/', requireAuth, featuresController.createFeatures);

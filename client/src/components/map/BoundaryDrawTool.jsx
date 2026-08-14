@@ -78,6 +78,7 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
       return;
     }
 
+    map.doubleClickZoom.disable();
     map.getContainer().style.cursor = "crosshair";
 
     const onClick = (e) => {
@@ -101,7 +102,10 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
     };
 
     const onDblClick = (e) => {
-      e.originalEvent.preventDefault();
+      if (e.originalEvent) {
+        e.originalEvent.preventDefault();
+        e.originalEvent.stopPropagation();
+      }
       finishPolygon();
     };
 
@@ -111,12 +115,14 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
     return () => {
       map.off("click", onClick);
       map.off("dblclick", onDblClick);
+      map.doubleClickZoom.enable();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDrawing]);
 
   function cleanup() {
     map.getContainer().style.cursor = "";
+    try { map.doubleClickZoom.enable(); } catch (_) { }
     if (polylineRef.current) { map.removeLayer(polylineRef.current); polylineRef.current = null; }
     markersRef.current.forEach((m) => map.removeLayer(m));
     markersRef.current = [];
@@ -125,25 +131,39 @@ export default function BoundaryDrawTool({ isDrawing, onDrawEnd }) {
 
   async function finishPolygon() {
     const verts = verticesRef.current;
-    if (verts.length < 3) {
+    
+    // Deduplicate consecutive identical/near-identical vertices (e.g. from double-click event ordering)
+    const uniqueVerts = [];
+    for (const v of verts) {
+      const last = uniqueVerts[uniqueVerts.length - 1];
+      if (!last || Math.abs(last.lat - v.lat) > 0.000001 || Math.abs(last.lng - v.lng) > 0.000001) {
+        uniqueVerts.push(v);
+      }
+    }
+
+    if (uniqueVerts.length < 3) {
       cleanup();
       onDrawEnd?.();
       return;
     }
 
     // Build closed GeoJSON polygon — coordinates are [lng, lat]
-    const coords = [...verts.map((v) => [v.lng, v.lat])];
+    const coords = [...uniqueVerts.map((v) => [v.lng, v.lat])];
     coords.push(coords[0]); // close ring
     const polygon = { type: "Polygon", coordinates: [coords] };
+
+    // Save to local store so boundary renders immediately
+    setBoundary(polygon);
 
     cleanup();
     onDrawEnd?.();
 
-    // Save to store
-    setBoundary(polygon);
-
-    // Persist to backend (non-blocking)
-    apiSaveBoundary(polygon).catch(console.error);
+    // Persist to backend
+    try {
+      await apiSaveBoundary(polygon);
+    } catch (err) {
+      console.error("Failed to save boundary to backend:", err);
+    }
   }
 
   return null;
