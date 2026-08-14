@@ -124,39 +124,47 @@ export default function LeftSidebar({
   const [loadError, setLoadError] = useState(null);
 
   const handleLoadSaved = async () => {
+    if (!isLoggedIn) {
+      setLoadError("Log in to access your saved project data.");
+      return;
+    }
     setIsLoadingSaved(true);
     setLoadError(null);
     try {
       const [features, boundary] = await Promise.all([getFeatures(), getBoundary()]);
 
-      if (!features || features.length === 0) {
-        setLoadError("No saved data found yet.");
-        return;
-      }
+      let count = 0;
+      if (features && features.length > 0) {
+        const grouped = {};
+        for (const f of features) {
+          const lid = f.layerId || "unassigned";
+          if (!grouped[lid]) grouped[lid] = [];
+          grouped[lid].push(f);
+        }
 
-      const grouped = {};
-      for (const f of features) {
-        const lid = f.layerId || "unassigned";
-        if (!grouped[lid]) grouped[lid] = [];
-        grouped[lid].push(f);
-      }
-
-      Object.entries(grouped).forEach(([layerId, feats]) => {
-        const geometryType = feats[0]?.geometry?.type || "Unknown";
-        addLayer({
-          id: layerId,
-          name: `Saved ${describeGeometry(geometryType)} Layer`,
-          geometryType,
-          isPersisted: true,
-          isVisible: true,
-          color: "#1D6E5A",
-          features: feats.map((f) => ({ ...f, id: f._id || f.feature_id, isPersisted: true })),
-          recordCount: feats.length,
+        Object.entries(grouped).forEach(([layerId, feats]) => {
+          const geometryType = feats[0]?.geometry?.type || "Unknown";
+          addLayer({
+            id: layerId,
+            name: `Saved ${describeGeometry(geometryType)} Layer`,
+            geometryType,
+            isPersisted: true,
+            isVisible: true,
+            color: "#1D6E5A",
+            features: feats.map((f) => ({ ...f, id: f._id || f.feature_id, isPersisted: true })),
+            recordCount: feats.length,
+          });
         });
-      });
+        count += features.length;
+      }
 
       if (boundary?.geometry) {
         setBoundary(boundary.geometry);
+        count += 1;
+      }
+
+      if (count === 0) {
+        setLoadError("No saved data found for your account.");
       }
     } catch (err) {
       setLoadError(err.message);
@@ -227,17 +235,18 @@ export default function LeftSidebar({
         <UploadControl />
       </div>
 
-      {/* Load previously saved data — on demand, not automatic */}
+      {/* Load previously saved data */}
       <div className="left-sidebar__section">
         <p className="left-sidebar__section-title">Project Data</p>
         <button
           className="tool-btn"
           id="tool-load-saved"
           onClick={handleLoadSaved}
-          disabled={isLoadingSaved}
+          disabled={isLoadingSaved || !isLoggedIn}
+          title={!isLoggedIn ? "Log in to load saved project data" : undefined}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 11-3-6.7" /><polyline points="21 3 21 9 15 9" /></svg>
-          <span>{isLoadingSaved ? "Loading…" : "Load Saved Data"}</span>
+          <span>{!isLoggedIn ? "Log In to Load Saved Data" : isLoadingSaved ? "Loading…" : "Load Saved Data"}</span>
         </button>
         {loadError && (
           <div className="upload-control__error" role="alert" id="load-saved-error">

@@ -38,14 +38,23 @@ const SET_BOUNDARY = "SET_BOUNDARY";
 const TOGGLE_BOUNDARY_VISIBILITY = "TOGGLE_BOUNDARY_VISIBILITY";
 const TOGGLE_THEME = "TOGGLE_THEME";
 const SET_MAP_INSTANCE = "SET_MAP_INSTANCE";
+const CLEAR_ALL = "CLEAR_ALL";
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
 function reducer(state, action) {
   switch (action.type) {
     case ADD_LAYER: {
-      const exists = state.layers.find((l) => l.id === action.payload.id);
-      if (exists) return state;
+      const idx = state.layers.findIndex((l) => l.id === action.payload.id);
+      if (idx >= 0) {
+        const nextLayers = [...state.layers];
+        nextLayers[idx] = action.payload;
+        return {
+          ...state,
+          layers: nextLayers,
+          activeLayerId: action.payload.id,
+        };
+      }
       return {
         ...state,
         layers: [...state.layers, action.payload],
@@ -91,6 +100,15 @@ function reducer(state, action) {
 
     case SET_MAP_INSTANCE:
       return { ...state, mapInstance: action.payload };
+
+    case CLEAR_ALL:
+      return {
+        ...state,
+        layers: [],
+        activeLayerId: null,
+        selectedFeatureId: null,
+        boundaryLayer: null,
+      };
 
     default:
       return state;
@@ -156,6 +174,10 @@ export function LayersProvider({ children }) {
     dispatch({ type: SET_MAP_INSTANCE, payload: map });
   }, []);
 
+  const clearAll = useCallback(() => {
+    dispatch({ type: CLEAR_ALL });
+  }, []);
+
   const activeLayer = state.layers.find((l) => l.id === state.activeLayerId) || null;
 
   const allVisibleFeatures = state.layers
@@ -184,6 +206,7 @@ export function LayersProvider({ children }) {
         toggleBoundaryVisibility,
         toggleTheme,
         setMapInstance,
+        clearAll,
       }}
     >
       {children}

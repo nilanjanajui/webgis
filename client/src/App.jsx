@@ -16,10 +16,15 @@ import AuthModal from "./components/auth/AuthModal";
 import "./index.css";
 
 function AppHeader() {
-  const { layers, boundaryLayer, theme, toggleTheme } = useLayersStore();
+  const { layers, boundaryLayer, theme, toggleTheme, clearAll } = useLayersStore();
   const { user, isLoggedIn, isCheckingSession, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const totalFeatures = layers.reduce((acc, l) => acc + (l.recordCount || 0), 0);
+
+  const handleLogout = () => {
+    clearAll();
+    logout();
+  };
 
   return (
     <header className="app-header" id="app-header">
@@ -54,7 +59,7 @@ function AppHeader() {
           isLoggedIn ? (
             <button
               className="theme-toggle-btn"
-              onClick={logout}
+              onClick={handleLogout}
               title={`Log out ${user.username}`}
               id="logout-btn"
             >
