@@ -22,7 +22,7 @@ function generateLayerId() {
   return `layer_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted) {
+function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted, userMapping = {}) {
   return {
     id: layerId,
     name: file.name.replace(/\.[^/.]+$/, ""), // strip extension
@@ -30,13 +30,78 @@ function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted) {
     isPersisted,
     isVisible: true,
     color: "#1D6E5A",
-    features: geojson.features.map((f) => ({
-      ...f.properties,
-      id: f.properties?.id || `feat_${Math.random().toString(36).slice(2)}`,
-      geometry: f.geometry,
-      layerId,
-      isPersisted,
-    })),
+    features: geojson.features.map((f) => {
+      const rawProps = f.properties || {};
+      const mappedProps = applyMapping(rawProps, userMapping);
+
+      const nameVal =
+        mappedProps.point_name ||
+        mappedProps.name ||
+        rawProps.point_name ||
+        rawProps.name ||
+        rawProps.Point_Name ||
+        rawProps.POINT_NAME ||
+        rawProps.Name ||
+        rawProps.NAME ||
+        rawProps.pnt_name ||
+        rawProps.PNT_NAME ||
+        rawProps.Label ||
+        rawProps.LABEL ||
+        rawProps.Location ||
+        rawProps.LOCATION ||
+        rawProps.Site_Name ||
+        rawProps.SITE_NAME ||
+        rawProps.Title ||
+        rawProps.TITLE ||
+        rawProps.Place ||
+        rawProps.PLACE ||
+        "";
+
+      const categoryVal =
+        mappedProps.category ||
+        rawProps.category ||
+        rawProps.Category ||
+        rawProps.CATEGORY ||
+        rawProps.Type ||
+        rawProps.TYPE ||
+        rawProps.cat ||
+        rawProps.CAT ||
+        "Default";
+
+      const descrVal =
+        mappedProps.descr ||
+        rawProps.descr ||
+        rawProps.description ||
+        rawProps.Description ||
+        rawProps.DESCRIPTION ||
+        rawProps.DESCR ||
+        "";
+
+      const pointIdVal =
+        mappedProps.point_id ||
+        rawProps.point_id ||
+        rawProps.Point_ID ||
+        rawProps.POINT_ID ||
+        rawProps.id ||
+        rawProps.ID ||
+        rawProps.pnt_id ||
+        rawProps.PNT_ID ||
+        "";
+
+      return {
+        ...rawProps,
+        ...mappedProps,
+        name: nameVal,
+        point_name: nameVal,
+        category: categoryVal,
+        descr: descrVal,
+        feature_id: pointIdVal,
+        id: rawProps.id || `feat_${Math.random().toString(36).slice(2)}`,
+        geometry: f.geometry,
+        layerId,
+        isPersisted,
+      };
+    }),
     recordCount: geojson.features.length,
   };
 }
@@ -53,7 +118,7 @@ export default function ConfirmationPreview({ previewData, onClose }) {
   // Build preview rows for the table
   const previewRows = (() => {
     if (geojson) {
-      return geojson.features.slice(0, 5).map((f) => f.properties || {});
+      return geojson.features.slice(0, 5).map((f) => applyMapping(f.properties || {}, userMapping));
     }
     if (rawRows) {
       const mapped = rawRows.slice(0, 5).map((r) => applyMapping(r, userMapping));
@@ -86,12 +151,15 @@ export default function ConfirmationPreview({ previewData, onClose }) {
           throw new Error("No valid features found. Check that your file has latitude/longitude columns.");
         }
 
-        const layer = buildLayerFromGeoJSON(finalGeoJSON, file, layerId, persist);
+        const layer = buildLayerFromGeoJSON(finalGeoJSON, file, layerId, persist, userMapping);
 
         if (persist) {
           // Write to MongoDB via API
-          const featuresPayload = finalGeoJSON.features.map((f) => ({
-            ...f.properties,
+          const featuresPayload = layer.features.map((f) => ({
+            feature_id: f.feature_id || f.point_id || f.id,
+            name: f.name || f.point_name || "",
+            category: f.category || "Default",
+            descr: f.descr || "",
             geometry: f.geometry,
             layerId,
           }));
