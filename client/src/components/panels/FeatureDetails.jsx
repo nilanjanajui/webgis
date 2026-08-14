@@ -63,7 +63,7 @@ export default function FeatureDetails() {
       {/* Header */}
       <div className="feat-details__header" style={{ borderLeft: `4px solid ${color}` }}>
         <div>
-          <p className="feat-details__name">{selectedFeature.name || selectedFeature.feature_id || "Unnamed Feature"}</p>
+          <p className="feat-details__name">{selectedFeature.name || selectedFeature.point_name || selectedFeature.feature_id || "Unnamed Feature"}</p>
           <p className="feat-details__meta">
             <span className="feat-details__cat-dot" style={{ background: color }} />
             {selectedFeature.category || "—"}

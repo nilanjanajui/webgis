@@ -103,7 +103,7 @@ export default function FeatureLayer({ layer }) {
         });
       }
 
-      leafletLayer.bindTooltip(feature.name || feature.feature_id || "Feature", {
+      leafletLayer.bindTooltip(feature.name || feature.point_name || feature.feature_id || "Feature", {
         permanent: false,
         direction: "top",
         className: "leaflet-tooltip-webgis",
