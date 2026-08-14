@@ -73,14 +73,6 @@ export default function UploadControl() {
         console.log("[upload] field match result:", matchResult);
       }
 
-      if (geojson && geojson.features && geojson.features.length > 0) {
-        const featureHeaders = Array.from(
-          new Set(geojson.features.flatMap((f) => Object.keys(f.properties || {})))
-        );
-        matchResult = autoMatchFields(featureHeaders);
-        console.log("[upload] shapefile/geojson field match result:", matchResult);
-      }
-
       const nextPreviewData = {
         file,
         fileType,

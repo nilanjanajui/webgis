@@ -41,7 +41,6 @@ function rowToFeature(row, layerId) {
       id: generateId(),
       feature_id: row.point_id || "",
       name: row.point_name || row.name || "",
-      point_name: row.point_name || row.name || "",
       category: row.category || "Default",
       descr: row.descr || row.description || "",
       layerId,
