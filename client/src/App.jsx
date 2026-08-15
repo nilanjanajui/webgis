@@ -198,16 +198,30 @@ function AppHeader() {
 function AppInner() {
   const [isDrawingBoundary, setIsDrawingBoundary] = useState(false);
   const [isAddingPoint, setIsAddingPoint] = useState(false);
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isHeatmapEnabled, setIsHeatmapEnabled] = useState(false);
   const mapElRef = useRef(null);
 
   const handleToggleBoundaryDraw = () => {
     setIsAddingPoint(false);
+    setIsMeasuring(false);
     setIsDrawingBoundary((v) => !v);
   };
 
   const handleToggleAddPoint = () => {
     setIsDrawingBoundary(false);
+    setIsMeasuring(false);
     setIsAddingPoint((v) => !v);
+  };
+
+  const handleToggleMeasure = () => {
+    setIsDrawingBoundary(false);
+    setIsAddingPoint(false);
+    setIsMeasuring((v) => !v);
+  };
+
+  const handleToggleHeatmap = () => {
+    setIsHeatmapEnabled((v) => !v);
   };
 
   return (
@@ -223,6 +237,10 @@ function AppInner() {
           onToggleBoundaryDraw={handleToggleBoundaryDraw}
           isAddingPoint={isAddingPoint}
           onToggleAddPoint={handleToggleAddPoint}
+          isMeasuring={isMeasuring}
+          onToggleMeasure={handleToggleMeasure}
+          isHeatmapEnabled={isHeatmapEnabled}
+          onToggleHeatmap={handleToggleHeatmap}
           mapElRef={mapElRef}
         />
 
@@ -233,6 +251,9 @@ function AppInner() {
             isAddingPoint={isAddingPoint}
             onBoundaryDrawEnd={() => setIsDrawingBoundary(false)}
             onPointFormClose={() => setIsAddingPoint(false)}
+            isMeasuring={isMeasuring}
+            onMeasureClose={() => setIsMeasuring(false)}
+            isHeatmapEnabled={isHeatmapEnabled}
           />
         </div>
 

@@ -135,16 +135,27 @@ function MapDockOverlay({ mapTileType, setMapTileType }) {
   );
 }
 
-export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDrawEnd, onPointFormClose }) {
-  const { layers, theme } = useLayersStore();
+import MeasureTool from "../map/MeasureTool";
+import HeatmapLayer from "../map/HeatmapLayer";
+
+export default function MapView({
+  isDrawingBoundary,
+  isAddingPoint,
+  onBoundaryDrawEnd,
+  onPointFormClose,
+  isMeasuring,
+  onMeasureClose,
+  isHeatmapEnabled,
+}) {
+  const { layers, theme, allVisibleFeatures } = useLayersStore();
   const [mapReady, setMapReady] = useState(false);
-  const [mapTileType, setMapTileType] = useState("auto"); // "auto" | "google-street" | "google-sat"
+  const [mapTileType, setMapTileType] = useState("google-street"); // "google-street" | "google-sat"
 
   const getTileUrl = () => {
     if (mapTileType === "google-sat") {
       return "https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"; // Satellite Hybrid
     }
-    return "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"; // Street Map
+    return "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"; // Google Street Map
   };
 
   const isDarkModeTile = mapTileType === "google-sat" ? false : theme === "dark";
@@ -175,7 +186,7 @@ export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDr
         {/* Floating Map Dock & Telemetry HUD */}
         {mapReady && (
           <MapDockOverlay
-            mapTileType={mapTileType === "auto" ? (theme === "dark" ? "google-street" : "google-street") : mapTileType}
+            mapTileType={mapTileType}
             setMapTileType={setMapTileType}
           />
         )}
@@ -184,6 +195,19 @@ export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDr
         {mapReady && layers.map((layer) => (
           <FeatureLayer key={layer.id} layer={layer} />
         ))}
+
+        {/* Point Density Heatmap Layer */}
+        {mapReady && (
+          <HeatmapLayer
+            features={allVisibleFeatures}
+            isEnabled={isHeatmapEnabled}
+          />
+        )}
+
+        {/* Spatial Measurement Tool */}
+        {mapReady && isMeasuring && (
+          <MeasureTool isActive={isMeasuring} onClose={onMeasureClose} />
+        )}
 
         {/* Boundary drawing mode */}
         {mapReady && (
