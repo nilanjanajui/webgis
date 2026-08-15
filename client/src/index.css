@@ -2090,118 +2090,6 @@ textarea {
   gap: 0.6rem;
 }
 
-/* ── 🗺️ Floating Multi-Basemap Switcher Control ──────────────────────────── */
-.basemap-control {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  z-index: 500;
-}
-
-.basemap-control__toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 24px;
-  background: var(--glass-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  color: var(--color-ink);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.basemap-control__toggle:hover {
-  background: var(--color-surface);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-}
-
-.basemap-control__menu {
-  position: absolute;
-  top: 110%;
-  left: 0;
-  width: 260px;
-  padding: 1rem;
-  background: var(--glass-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  animation: fadeInUp 0.2s ease-out;
-}
-
-.basemap-control__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: var(--color-ink);
-}
-
-.basemap-control__close {
-  background: transparent;
-  border: none;
-  color: var(--color-slate);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.basemap-control__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-}
-
-.basemap-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.65rem 0.4rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-mist);
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-}
-
-.basemap-card:hover {
-  border-color: var(--color-teal);
-  background: var(--color-surface);
-}
-
-.basemap-card--active {
-  border-color: var(--color-teal) !important;
-  background: var(--color-teal-light) !important;
-  color: var(--color-teal) !important;
-}
-
-.basemap-card__icon {
-  font-size: 1.3rem;
-  margin-bottom: 0.2rem;
-}
-
-.basemap-card__check {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
 /* ── 📏 Spatial Measurement Tool ─────────────────────────────────────────── */
 .measure-node-dot {
   width: 12px;
@@ -2228,6 +2116,18 @@ textarea {
   background: rgba(13, 148, 136, 0.95) !important;
   color: #FFFFFF !important;
   border-color: #5EEAD4 !important;
+}
+
+.measure-tooltip--cursor {
+  background: rgba(245, 158, 11, 0.95) !important;
+  color: #FFFFFF !important;
+  border-color: #FBBF24 !important;
+  font-weight: 700 !important;
+}
+
+.measure-node-dot--cursor {
+  background: #F59E0B !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.9) !important;
 }
 
 .measure-panel {

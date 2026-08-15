@@ -136,16 +136,15 @@ function MapDockOverlay({ mapTileType, setMapTileType }) {
 }
 
 import MeasureTool from "../map/MeasureTool";
-import HeatmapLayer from "../map/HeatmapLayer";
 
 export default function MapView({
   isDrawingBoundary,
   isAddingPoint,
   onBoundaryDrawEnd,
   onPointFormClose,
-  isMeasuring,
+  measureMode,
+  measureInitialPoints,
   onMeasureClose,
-  isHeatmapEnabled,
 }) {
   const { layers, theme, allVisibleFeatures } = useLayersStore();
   const [mapReady, setMapReady] = useState(false);
@@ -196,17 +195,14 @@ export default function MapView({
           <FeatureLayer key={layer.id} layer={layer} />
         ))}
 
-        {/* Point Density Heatmap Layer */}
-        {mapReady && (
-          <HeatmapLayer
-            features={allVisibleFeatures}
-            isEnabled={isHeatmapEnabled}
-          />
-        )}
-
         {/* Spatial Measurement Tool */}
-        {mapReady && isMeasuring && (
-          <MeasureTool isActive={isMeasuring} onClose={onMeasureClose} />
+        {mapReady && !!measureMode && (
+          <MeasureTool
+            isActive={!!measureMode}
+            measureMode={measureMode}
+            initialPoints={measureInitialPoints}
+            onClose={onMeasureClose}
+          />
         )}
 
         {/* Boundary drawing mode */}

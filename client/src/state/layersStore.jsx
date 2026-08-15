@@ -88,8 +88,18 @@ function reducer(state, action) {
     case SET_BOUNDARY:
       return { ...state, boundaryLayer: action.payload, boundaryVisible: true };
 
-    case TOGGLE_BOUNDARY_VISIBILITY:
-      return { ...state, boundaryVisible: !state.boundaryVisible };
+    case TOGGLE_BOUNDARY_VISIBILITY: {
+      const nextVisible = !state.boundaryVisible;
+      return {
+        ...state,
+        boundaryVisible: nextVisible,
+        layers: state.layers.map((l) =>
+          l.id.includes("boundary") || l.name?.toLowerCase().includes("boundary")
+            ? { ...l, isVisible: nextVisible }
+            : l
+        ),
+      };
+    }
 
     case TOGGLE_THEME: {
       const nextTheme = state.theme === "light" ? "dark" : "light";
