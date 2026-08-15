@@ -12,7 +12,7 @@
  * ensuring DBF column name compatibility (max 10 chars).
  */
 function toGeoJSONFeature(feature) {
-  const props = feature.properties || {};
+  const props = { ...feature, ...(feature.properties || {}) };
   const cleanProps = {};
 
   // Standard assignment fields with fallback checks
@@ -51,8 +51,15 @@ function toGeoJSONFeature(feature) {
     ""
   ).slice(0, 100);
 
+  const SKIP_EXPORT_KEYS = new Set([
+    "id", "layerId", "isPersisted", "geometry", "properties",
+    "_id", "__v", "createdBy", "layer_type",
+    "point_id", "point_name", "name", "category", "descr", "description"
+  ]);
+
   // Copy any additional custom properties, truncating keys to 10 chars max for DBF
   for (const [key, val] of Object.entries(props)) {
+    if (SKIP_EXPORT_KEYS.has(key)) continue;
     const dbfKey = key.slice(0, 10);
     if (!(dbfKey in cleanProps)) {
       if (val === null || val === undefined) {

@@ -22,7 +22,8 @@ export function detectFileType(file) {
 
   const name = file.name.toLowerCase();
 
-  if (name.endsWith(".zip")) return FILE_TYPES.SHAPEFILE;
+  if (name.endsWith(".zip") || name.endsWith(".shp")) return FILE_TYPES.SHAPEFILE;
+  if (name.endsWith(".dbf") || name.endsWith(".shx") || name.endsWith(".prj")) return FILE_TYPES.SHAPEFILE;
   if (name.endsWith(".csv")) return FILE_TYPES.CSV;
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) return FILE_TYPES.EXCEL;
   if (name.endsWith(".geojson") || name.endsWith(".json")) return FILE_TYPES.GEOJSON;
@@ -44,7 +45,7 @@ export function detectFileType(file) {
  */
 export function describeFileType(fileType) {
   const labels = {
-    [FILE_TYPES.SHAPEFILE]: "Shapefile (.zip)",
+    [FILE_TYPES.SHAPEFILE]: "Shapefile (.shp / .zip)",
     [FILE_TYPES.CSV]: "CSV Spreadsheet",
     [FILE_TYPES.EXCEL]: "Excel Spreadsheet",
     [FILE_TYPES.GEOJSON]: "GeoJSON / JSON",

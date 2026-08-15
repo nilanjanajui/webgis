@@ -23,19 +23,29 @@ export default function UploadControl() {
   const [previewData, setPreviewData] = useState(null);
   const inputRef = useRef(null);
 
-  const processFile = useCallback(async (file) => {
-    console.log("[upload] processFile() called with:", file?.name, file?.size, "bytes, type:", file?.type);
+  const processFiles = useCallback(async (fileListOrArray) => {
+    const files = Array.from(fileListOrArray || []);
+    if (!files.length) return;
 
     setError(null);
     setIsLoading(true);
 
     try {
-      const fileType = detectFileType(file);
-      console.log("[upload] detectFileType() ->", fileType);
+      const shpFile = files.find((f) => f.name.toLowerCase().endsWith(".shp"));
+      const zipFile = files.find((f) => f.name.toLowerCase().endsWith(".zip"));
+      const primaryFile = shpFile || zipFile || files[0];
+
+      let fileType = detectFileType(primaryFile);
+
+      if (shpFile || zipFile) {
+        fileType = FILE_TYPES.SHAPEFILE;
+      }
+
+      console.log("[upload] processFiles() with primary file:", primaryFile?.name, "type:", fileType);
 
       if (fileType === FILE_TYPES.UNKNOWN) {
         throw new Error(
-          "Unsupported file format. Please upload a .zip shapefile, .csv, .xlsx, or .geojson file."
+          "Unsupported file format. Please upload a .shp or .zip shapefile, .csv, .xlsx, or .geojson file."
         );
       }
 
@@ -44,22 +54,21 @@ export default function UploadControl() {
       let matchResult = null;
 
       if (fileType === FILE_TYPES.SHAPEFILE) {
-        console.log("[upload] parsing as shapefile…");
-        geojson = await parseShapefile(file);
+        console.log("[upload] parsing shapefile…");
+        geojson = await parseShapefile(files.length === 1 ? primaryFile : files);
         console.log("[upload] parseShapefile() returned:", geojson);
       } else if (fileType === FILE_TYPES.GEOJSON) {
         console.log("[upload] parsing as geojson…");
-        const text = await file.text();
+        const text = await primaryFile.text();
         geojson = JSON.parse(text);
         console.log("[upload] parsed geojson:", geojson);
         if (!geojson.features) throw new Error("Invalid GeoJSON: missing features array.");
       } else {
         console.log("[upload] parsing as tabular (csv/excel)…");
-        // CSV or Excel → tabular rows
         rawRows =
           fileType === FILE_TYPES.CSV
-            ? await parseCSV(file)
-            : await parseExcel(file);
+            ? await parseCSV(primaryFile)
+            : await parseExcel(primaryFile);
 
         console.log("[upload] parsed rows:", rawRows?.length, rawRows?.slice(0, 2));
 
@@ -74,7 +83,7 @@ export default function UploadControl() {
       }
 
       const nextPreviewData = {
-        file,
+        file: primaryFile,
         fileType,
         geojson,          // set for shapefile/geojson paths
         rawRows,          // set for csv/excel paths
@@ -90,11 +99,11 @@ export default function UploadControl() {
       console.log("[upload] setting previewData -> modal should open now:", nextPreviewData);
       setPreviewData(nextPreviewData);
     } catch (err) {
-      console.error("[upload] processFile() threw:", err);
+      console.error("[upload] processFiles() threw:", err);
       setError(err.message);
     } finally {
       setIsLoading(false);
-      console.log("[upload] processFile() finished, isLoading -> false");
+      console.log("[upload] processFiles() finished, isLoading -> false");
     }
   }, []);
 
@@ -109,20 +118,14 @@ export default function UploadControl() {
     e.preventDefault();
     console.log("[upload] onDrop fired. dataTransfer.files:", e.dataTransfer.files, "length:", e.dataTransfer.files?.length);
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processFile(file);
-    } else {
-      console.warn("[upload] onDrop fired but no file was in dataTransfer.files — this is the bug if you see this line.");
+    if (e.dataTransfer.files?.length) {
+      processFiles(e.dataTransfer.files);
     }
   };
   const onFileChange = (e) => {
     console.log("[upload] onFileChange fired. target.files:", e.target.files, "length:", e.target.files?.length);
-    const file = e.target.files?.[0];
-    if (file) {
-      processFile(file);
-    } else {
-      console.warn("[upload] onFileChange fired but no file was selected — dialog was likely cancelled.");
+    if (e.target.files?.length) {
+      processFiles(e.target.files);
     }
     e.target.value = ""; // reset input so same file can be re-selected
   };
@@ -147,7 +150,8 @@ export default function UploadControl() {
         <input
           ref={inputRef}
           type="file"
-          accept=".zip,.csv,.xlsx,.xls,.geojson,.json"
+          accept=".zip,.shp,.dbf,.prj,.shx,.csv,.xlsx,.xls,.geojson,.json"
+          multiple
           style={{ display: "none" }}
           onChange={onFileChange}
           id="upload-file-input"
@@ -168,10 +172,10 @@ export default function UploadControl() {
               </svg>
             </div>
             <p className="upload-control__label">
-              <strong>Drop a file here</strong> or click to browse
+              <strong>Drop file(s) here</strong> or click to browse
             </p>
             <p className="upload-control__hint">
-              Shapefile (.zip), CSV, Excel, GeoJSON
+              Shapefile (.shp or .zip), CSV, Excel, GeoJSON
             </p>
           </div>
         )}
