@@ -141,7 +141,7 @@ export function LayersProvider({ children }) {
         await apiDeleteLayer(layerId);
         try {
           await apiDeleteBoundary();
-        } catch (_) {}
+        } catch (_) { }
       } catch (err) {
         console.error(err);
         throw err; // don't remove locally if the backend delete failed

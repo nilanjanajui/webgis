@@ -155,6 +155,7 @@ export default function MapView({ isDrawingBoundary, isAddingPoint, onBoundaryDr
         center={DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
         zoomControl={false}
+        preferCanvas={true}
         style={{ width: "100%", height: "100%" }}
         whenReady={() => setMapReady(true)}
         id="leaflet-map"

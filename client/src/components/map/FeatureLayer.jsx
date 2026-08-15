@@ -23,8 +23,8 @@ function makeIcon(color, selected) {
   const fillColor = selected
     ? "#FF2D55"
     : color && color !== "#1D6E5A" && color !== "#5B6B66"
-    ? color
-    : "#FF3B30";
+      ? color
+      : "#FF3B30";
 
   const shadowFilter = selected
     ? `filter="drop-shadow(0 0 10px rgba(255, 45, 85, 0.95)) drop-shadow(0 4px 10px rgba(0,0,0,0.6))"`
