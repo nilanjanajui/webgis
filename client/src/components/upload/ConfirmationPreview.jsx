@@ -30,13 +30,20 @@ function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted) {
     isPersisted,
     isVisible: true,
     color: "#FF3B30",
-    features: geojson.features.map((f) => ({
-      ...(f.properties || {}),
-      id: f.properties?.id || `feat_${Math.random().toString(36).slice(2)}`,
-      geometry: f.geometry,
-      layerId,
-      isPersisted,
-    })),
+    features: geojson.features.map((f, index) => {
+      const props = f.properties || {};
+      return {
+        feature_id: props.feature_id || props.point_id || props.Point_ID || props.ID || props.id || `SHP_${index + 1}`,
+        name: props.name || props.point_name || props.Point_Name || props.Name || `Feature ${index + 1}`,
+        category: props.category || props.Category || "Default",
+        descr: props.descr || props.description || props.Description || "Uploaded vector geometry",
+        ...props,
+        id: props.id || `feat_${Math.random().toString(36).slice(2)}`,
+        geometry: f.geometry,
+        layerId,
+        isPersisted,
+      };
+    }),
     recordCount: geojson.features.length,
   };
 }
@@ -50,10 +57,23 @@ export default function ConfirmationPreview({ previewData, onClose }) {
 
   const { file, fileType, geojson, rawRows, matchResult, geometryType, recordCount } = previewData;
 
+  const isSingleShpNoDbf =
+    file?.name?.toLowerCase().endsWith(".shp") &&
+    geojson?.features?.every((f) => !f.properties || Object.keys(f.properties).length === 0);
+
   // Build preview rows for the table
   const previewRows = (() => {
     if (geojson) {
-      return geojson.features.slice(0, 5).map((f) => f.properties || {});
+      return geojson.features.slice(0, 5).map((f, index) => {
+        const props = f.properties || {};
+        return {
+          feature_id: props.feature_id || props.point_id || props.Point_ID || props.ID || props.id || `SHP_${index + 1}`,
+          name: props.name || props.point_name || props.Point_Name || props.Name || `Feature ${index + 1}`,
+          category: props.category || props.Category || "Default",
+          descr: props.descr || props.description || props.Description || "Uploaded vector geometry",
+          ...props,
+        };
+      });
     }
     if (rawRows) {
       const mapped = rawRows.slice(0, 5).map((r) => applyMapping(r, userMapping));
@@ -126,6 +146,19 @@ export default function ConfirmationPreview({ previewData, onClose }) {
           <span className="badge badge--geometry">{geometryType}</span>
           <span className="badge badge--count">{recordCount.toLocaleString()} records</span>
         </div>
+
+        {/* Single .shp notice */}
+        {isSingleShpNoDbf && (
+          <div className="field-match field-match--warn" id="single-shp-notice" style={{ background: "rgba(6, 182, 212, 0.1)", borderColor: "rgba(6, 182, 212, 0.4)", color: "var(--color-fg)" }}>
+            <div className="field-match__header">
+              <span className="field-match__icon">ℹ️</span>
+              <strong>Standalone .shp file uploaded (Geometry coordinates only)</strong>
+            </div>
+            <p className="field-match__info" style={{ marginTop: "4px", color: "var(--color-slate-300)" }}>
+              ESRI <code>.shp</code> files store map shapes but do not contain attribute table text. Default IDs and names have been assigned. To import your original attribute table columns, select the matching <strong>.dbf</strong> file alongside .shp or upload a <strong>.zip</strong> shapefile.
+            </p>
+          </div>
+        )}
 
         {/* Field mismatch warning */}
         {matchResult && (
