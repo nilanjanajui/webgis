@@ -116,16 +116,62 @@ export default function LeftSidebar({
   onToggleBoundaryDraw,
   isAddingPoint,
   onToggleAddPoint,
-  isMeasuring,
-  onToggleMeasure,
-  isHeatmapEnabled,
-  onToggleHeatmap,
+  measureMode,
+  onToggleMeasureDistance,
+  onToggleMeasureArea,
+  onMeasureLayerArea,
   mapElRef,
 }) {
   const { layers, activeLayerId, boundaryLayer, boundaryVisible, mapInstance, addLayer, setBoundary, toggleBoundaryVisibility } = useLayersStore();
   const { isLoggedIn } = useAuth();
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  const activeLayer = layers.find((l) => l.id === activeLayerId);
+  const activePoints = (activeLayer?.features || []).filter((f) => f.geometry?.type === "Point");
+  const pointCount = activePoints.length;
+
+  const hasBoundaryLayer = boundaryLayer || layers.some((l) => l.id.includes("boundary") || l.name?.toLowerCase().includes("boundary"));
+
+  const handleMeasureLayerArea = () => {
+    if (!activeLayer || !activeLayer.features || !activeLayer.features.length) {
+      alert("Please upload or select a layer first to measure its area.");
+      return;
+    }
+
+    const extractedPoints = [];
+    for (const f of activeLayer.features) {
+      if (f.geometry?.type === "Polygon" && f.geometry.coordinates?.[0]) {
+        f.geometry.coordinates[0].forEach(([lng, lat]) => {
+          if (!isNaN(lat) && !isNaN(lng)) extractedPoints.push([lat, lng]);
+        });
+      } else if (f.geometry?.type === "MultiPolygon" && f.geometry.coordinates?.[0]?.[0]) {
+        f.geometry.coordinates[0][0].forEach(([lng, lat]) => {
+          if (!isNaN(lat) && !isNaN(lng)) extractedPoints.push([lat, lng]);
+        });
+      } else {
+        // Point or tabular feature
+        let lat = f.latitude ?? f.properties?.latitude ?? f.geometry?.coordinates?.[1];
+        let lng = f.longitude ?? f.properties?.longitude ?? f.geometry?.coordinates?.[0];
+        if (lat !== undefined && lng !== undefined) {
+          lat = Number(lat);
+          lng = Number(lng);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            extractedPoints.push([lat, lng]);
+          }
+        }
+      }
+    }
+
+    if (extractedPoints.length < 3) {
+      alert(`The layer "${activeLayer.name}" needs at least 3 valid coordinates to calculate surface area.`);
+      return;
+    }
+
+    if (typeof onMeasureLayerArea === "function") {
+      onMeasureLayerArea(extractedPoints);
+    }
+  };
 
   const handleLoadSaved = async () => {
     if (!isLoggedIn) {
@@ -174,10 +220,6 @@ export default function LeftSidebar({
       setIsLoadingSaved(false);
     }
   };
-
-  const activeLayer = layers.find((l) => l.id === activeLayerId);
-  const activePoints = (activeLayer?.features || []).filter((f) => f.geometry?.type === "Point");
-  const pointCount = activePoints.length;
 
   const handleGenerateBoundary = async () => {
     if (!activeLayer) {
@@ -313,20 +355,31 @@ export default function LeftSidebar({
         <p className="left-sidebar__section-title">Map Tools</p>
         <div className="tool-btn-group">
           <ToolBtn
-            id="tool-measure"
+            id="tool-measure-distance"
             icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="2" y1="12" x2="22" y2="12" /><line x1="6" y1="9" x2="6" y2="15" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="18" y1="9" x2="18" y2="15" /></svg>}
-            label={isMeasuring ? "Measuring… (click map)" : "Measure Distance & Area"}
-            active={isMeasuring}
-            onClick={onToggleMeasure}
-            variant={isMeasuring ? "active" : "default"}
+            label={measureMode === "distance" ? "Measuring Distance…" : "Measure Distance"}
+            active={measureMode === "distance"}
+            onClick={onToggleMeasureDistance}
+            variant={measureMode === "distance" ? "active" : "default"}
           />
           <ToolBtn
-            id="tool-heatmap"
-            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2c-4 4-6 7.5-6 11a6 6 0 0012 0c0-3.5-2-7-6-11z" /></svg>}
-            label={isHeatmapEnabled ? "Heatmap Active" : "Heatmap Density Mode"}
-            active={isHeatmapEnabled}
-            onClick={onToggleHeatmap}
-            variant={isHeatmapEnabled ? "active" : "default"}
+            id="tool-measure-area"
+            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z" /><path d="M9 3v18" /><path d="M15 3v18" /><path d="M3 9h18" /><path d="M3 15h18" /></svg>}
+            label={measureMode === "area" ? "Measuring Area…" : "Measure Area"}
+            active={measureMode === "area"}
+            onClick={onToggleMeasureArea}
+            variant={measureMode === "area" ? "active" : "default"}
+          />
+          <ToolBtn
+            id="tool-measure-uploaded-area"
+            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>}
+            label={
+              !activeLayer
+                ? "Select Layer to Measure Area"
+                : `Measure Layer Area (${activeLayer.name})`
+            }
+            onClick={handleMeasureLayerArea}
+            disabled={!activeLayer || !activeLayer.features?.length}
           />
           <ToolBtn
             id="tool-draw-boundary"
@@ -366,10 +419,10 @@ export default function LeftSidebar({
               ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
               : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
             }
-            label={!boundaryLayer ? "No Boundary Yet" : boundaryVisible ? "Hide Boundary" : "Show Boundary"}
-            active={boundaryVisible && !!boundaryLayer}
+            label={!hasBoundaryLayer ? "No Boundary Yet" : boundaryVisible ? "Hide Boundary" : "Show Boundary"}
+            active={boundaryVisible && !!hasBoundaryLayer}
             onClick={toggleBoundaryVisibility}
-            disabled={!boundaryLayer}
+            disabled={!hasBoundaryLayer}
           />
         </div>
       </div>

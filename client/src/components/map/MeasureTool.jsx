@@ -1,14 +1,14 @@
 /**
  * MeasureTool.jsx
- * Interactive map measurement tool for distance (meters / kilometers)
- * and polygon area (square meters / square kilometers).
- *
- * Click points on the map to draw line segments.
- * Segments show midpoint distance labels, and total area is calculated if >= 3 points.
+ * Dynamic map measurement tool with live mouse cursor tracking (rubberband line).
+ * Supports double-click OR ESC key completion to stop tracking cursor and lock measurement.
+ * Supports separate modes:
+ *  - "distance": Measure linear polyline distance with real-time cursor tracking tooltips.
+ *  - "area": Measure polygon surface area with real-time cursor tracking rubberband fill.
  */
 
-import { useState, useCallback } from "react";
-import { useMapEvents, Polyline, Polygon, Marker, Tooltip } from "react-leaflet";
+import { useState, useCallback, useEffect } from "react";
+import { useMap, useMapEvents, Polyline, Polygon, Marker, Tooltip } from "react-leaflet";
 import L from "leaflet";
 
 /** Earth radius in meters */
@@ -64,23 +64,98 @@ function formatArea(sqMeters) {
   return `${Math.round(sqMeters).toLocaleString()} m²`;
 }
 
-export default function MeasureTool({ isActive, onClose }) {
+export default function MeasureTool({ isActive, measureMode = "distance", initialPoints = [], onClose }) {
+  const map = useMap();
   const [points, setPoints] = useState([]);
+  const [cursorPos, setCursorPos] = useState(null);
+  const [isFinished, setIsFinished] = useState(false);
+
+  const initialPointsKey = (initialPoints || []).map((p) => p.join(",")).join(";");
+
+  // Sync initialPoints when provided and fit map bounds
+  useEffect(() => {
+    if (isActive && initialPoints && initialPoints.length >= 3) {
+      setPoints(initialPoints);
+      setIsFinished(true);
+      try {
+        const bounds = L.latLngBounds(initialPoints);
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+        }
+      } catch (_) {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, initialPointsKey, map]);
+
+  // Disable map doubleClickZoom while measuring tool is active
+  useEffect(() => {
+    if (isActive) {
+      map.doubleClickZoom.disable();
+    }
+    return () => {
+      try {
+        map.doubleClickZoom.enable();
+      } catch (_) {}
+    };
+  }, [isActive, map]);
+
+  // Handle ESC key press to stop tracking cursor or close measure tool
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
+        if (!isFinished && points.length > 0) {
+          setIsFinished(true);
+          setCursorPos(null);
+        } else {
+          onClose?.();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isActive, isFinished, points.length, onClose]);
 
   useMapEvents({
     click(e) {
       if (!isActive) return;
-      setPoints((prev) => [...prev, [e.latlng.lat, e.latlng.lng]]);
+      if (isFinished) {
+        // Start new measurement on click after finished
+        setPoints([[e.latlng.lat, e.latlng.lng]]);
+        setIsFinished(false);
+      } else {
+        setPoints((prev) => [...prev, [e.latlng.lat, e.latlng.lng]]);
+      }
+    },
+    dblclick(e) {
+      if (!isActive) return;
+      if (e.originalEvent) {
+        e.originalEvent.preventDefault();
+        e.originalEvent.stopPropagation();
+      }
+      setIsFinished(true);
+      setCursorPos(null);
+    },
+    mousemove(e) {
+      if (!isActive || isFinished) return;
+      setCursorPos([e.latlng.lat, e.latlng.lng]);
+    },
+    mouseleave() {
+      setCursorPos(null);
     },
   });
 
   const handleClear = useCallback(() => {
     setPoints([]);
+    setCursorPos(null);
+    setIsFinished(false);
   }, []);
 
   if (!isActive) return null;
 
-  // Calculate segment lengths
+  // Calculate locked segment lengths
   let totalDistance = 0;
   const segments = [];
   for (let i = 0; i < points.length - 1; i++) {
@@ -91,15 +166,30 @@ export default function MeasureTool({ isActive, onClose }) {
     segments.push({
       mid: [midLat, midLng],
       dist: d,
-      accum: totalDistance,
     });
+  }
+
+  // Live cursor tracking rubberband calculations
+  let liveSegmentDist = 0;
+  let liveTotalDist = totalDistance;
+  let liveArea = 0;
+
+  if (!isFinished && points.length > 0 && cursorPos) {
+    const lastPoint = points[points.length - 1];
+    liveSegmentDist = calculateHaversineDistance(lastPoint, cursorPos);
+    liveTotalDist = totalDistance + liveSegmentDist;
+
+    if (measureMode === "area" && points.length >= 2) {
+      const candidatePoints = [...points, cursorPos];
+      liveArea = calculatePolygonArea(candidatePoints);
+    }
   }
 
   const polygonArea = points.length >= 3 ? calculatePolygonArea(points) : 0;
 
-  // Calculate centroid for area tooltip
+  // Calculate centroid for locked area tooltip
   let centroid = null;
-  if (points.length >= 3) {
+  if (points.length >= 3 && measureMode === "area") {
     const sumLat = points.reduce((acc, p) => acc + p[0], 0);
     const sumLng = points.reduce((acc, p) => acc + p[1], 0);
     centroid = [sumLat / points.length, sumLng / points.length];
@@ -112,10 +202,17 @@ export default function MeasureTool({ isActive, onClose }) {
     iconAnchor: [6, 6],
   });
 
+  const cursorIcon = L.divIcon({
+    className: "measure-cursor-icon",
+    html: `<div class="measure-node-dot measure-node-dot--cursor"></div>`,
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
+  });
+
   return (
     <>
-      {/* Visual polyline / polygon */}
-      {points.length >= 3 ? (
+      {/* Locked geometry */}
+      {measureMode === "area" && points.length >= 3 ? (
         <Polygon
           positions={points}
           pathOptions={{
@@ -137,7 +234,34 @@ export default function MeasureTool({ isActive, onClose }) {
         />
       ) : null}
 
-      {/* Markers at each point */}
+      {/* Live Rubberband Line / Polygon following cursor (only when NOT finished) */}
+      {!isFinished && points.length > 0 && cursorPos && (
+        <>
+          {measureMode === "area" && points.length >= 2 ? (
+            <Polygon
+              positions={[...points, cursorPos]}
+              pathOptions={{
+                color: "#F59E0B",
+                fillColor: "#F59E0B",
+                fillOpacity: 0.2,
+                weight: 2,
+                dashArray: "4, 4",
+              }}
+            />
+          ) : (
+            <Polyline
+              positions={[points[points.length - 1], cursorPos]}
+              pathOptions={{
+                color: "#F59E0B",
+                weight: 2,
+                dashArray: "4, 4",
+              }}
+            />
+          )}
+        </>
+      )}
+
+      {/* Markers at each placed vertex */}
       {points.map((pt, idx) => (
         <Marker key={idx} position={pt} icon={nodeIcon} />
       ))}
@@ -151,7 +275,7 @@ export default function MeasureTool({ isActive, onClose }) {
         </Marker>
       ))}
 
-      {/* Area tooltip at centroid */}
+      {/* Locked Area tooltip at centroid */}
       {centroid && polygonArea > 0 && (
         <Marker position={centroid} opacity={0}>
           <Tooltip permanent direction="center" className="measure-tooltip measure-tooltip--area">
@@ -160,20 +284,31 @@ export default function MeasureTool({ isActive, onClose }) {
         </Marker>
       )}
 
+      {/* Live Cursor Tracking Tooltip */}
+      {!isFinished && points.length > 0 && cursorPos && (
+        <Marker position={cursorPos} icon={cursorIcon}>
+          <Tooltip permanent direction="right" offset={[10, 0]} className="measure-tooltip measure-tooltip--cursor">
+            {measureMode === "area" && points.length >= 2
+              ? `Live Area: ${formatArea(liveArea)} (+${formatDistance(liveSegmentDist)})`
+              : `+${formatDistance(liveSegmentDist)} (Total: ${formatDistance(liveTotalDist)})`}
+          </Tooltip>
+        </Marker>
+      )}
+
       {/* Floating measurement control panel */}
       <div className="measure-panel" id="measure-floating-panel">
         <div className="measure-panel__header">
-          <span>📏 Spatial Measure Tool</span>
+          <span>{measureMode === "area" ? "📐 Measure Surface Area" : "📏 Measure Distance"}</span>
           <button className="measure-panel__close" onClick={onClose}>✕</button>
         </div>
 
         <div className="measure-panel__body">
           <p className="measure-panel__instruction">
-            {points.length === 0
-              ? "Click anywhere on the map to start measuring distance and area."
-              : points.length === 1
-              ? "Click a second point to measure distance."
-              : `Click more points to draw polygon area.`}
+            {isFinished
+              ? "Measurement complete! Click map to start a new track."
+              : points.length === 0
+              ? `Click map to start tracking. Double-click or press ESC to stop.`
+              : `Click to add points. Double-click or press ESC to stop tracking.`}
           </p>
 
           <div className="measure-panel__stats">
@@ -185,7 +320,7 @@ export default function MeasureTool({ isActive, onClose }) {
               <span className="measure-stat__label">Total Distance</span>
               <span className="measure-stat__value">{formatDistance(totalDistance)}</span>
             </div>
-            {points.length >= 3 && (
+            {measureMode === "area" && (
               <div className="measure-stat">
                 <span className="measure-stat__label">Polygon Area</span>
                 <span className="measure-stat__value">{formatArea(polygonArea)}</span>

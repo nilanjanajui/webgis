@@ -15,13 +15,48 @@ import { getFieldLabel } from "../../constants/fieldLabels";
 const COORD_COLUMNS = new Set(["latitude", "longitude", "geometry"]);
 
 /** Columns to hide from the table (internal implementation details). */
-const HIDDEN_COLUMNS = new Set(["layerId", "isPersisted", "geometry"]);
+const HIDDEN_COLUMNS = new Set([
+  "id",
+  "_id",
+  "__v",
+  "layerId",
+  "isPersisted",
+  "geometry",
+  "properties",
+  "createdAt",
+  "updatedAt",
+  "layerName",
+]);
+
+/** Safely extracts property value from feature or feature.properties */
+function getCellValue(feature, colKey) {
+  if (!feature) return "—";
+  const val = feature[colKey] ?? feature.properties?.[colKey];
+  if (val !== undefined && val !== null) {
+    if (typeof val === "object") return JSON.stringify(val);
+    return val;
+  }
+  const lowerKey = colKey.toLowerCase();
+  for (const k of Object.keys(feature)) {
+    if (k.toLowerCase() === lowerKey && !HIDDEN_COLUMNS.has(k)) {
+      return feature[k];
+    }
+  }
+  if (feature.properties && typeof feature.properties === "object") {
+    for (const k of Object.keys(feature.properties)) {
+      if (k.toLowerCase() === lowerKey && !HIDDEN_COLUMNS.has(k)) {
+        return feature.properties[k];
+      }
+    }
+  }
+  return "—";
+}
 
 function getSortedFeatures(features, sortKey, sortDir) {
   if (!sortKey) return features;
   return [...features].sort((a, b) => {
-    const aVal = a[sortKey] ?? "";
-    const bVal = b[sortKey] ?? "";
+    const aVal = getCellValue(a, sortKey);
+    const bVal = getCellValue(b, sortKey);
     if (typeof aVal === "number" && typeof bVal === "number") {
       return sortDir === "asc" ? aVal - bVal : bVal - aVal;
     }
@@ -40,18 +75,29 @@ export default function AttributeTable() {
 
   const features = activeLayer?.features || [];
 
-  // Derive visible columns from all features
+  // Derive unique visible columns from all features without case-insensitive duplicates
   const columns = useMemo(() => {
     if (!features.length) return [];
-    const keySet = new Set();
+    const seenLower = new Set();
+    const resultCols = [];
+
+    const checkAndAddKey = (rawKey) => {
+      if (!rawKey || HIDDEN_COLUMNS.has(rawKey)) return;
+      const lower = rawKey.toLowerCase();
+      if (!seenLower.has(lower)) {
+        seenLower.add(lower);
+        resultCols.push(rawKey);
+      }
+    };
+
     features.forEach((f) => {
-      Object.keys(f).forEach((k) => {
-        if (!HIDDEN_COLUMNS.has(k) && k !== "id") {
-          keySet.add(k);
-        }
-      });
+      Object.keys(f).forEach(checkAndAddKey);
+      if (f.properties && typeof f.properties === "object") {
+        Object.keys(f.properties).forEach(checkAndAddKey);
+      }
     });
-    return Array.from(keySet);
+
+    return resultCols;
   }, [features]);
 
   // Filter by search query
@@ -59,7 +105,7 @@ export default function AttributeTable() {
     if (!search.trim()) return features;
     const q = search.toLowerCase();
     return features.filter((f) =>
-      columns.some((col) => String(f[col] ?? "").toLowerCase().includes(q))
+      columns.some((col) => String(getCellValue(f, col) ?? "").toLowerCase().includes(q))
     );
   }, [features, columns, search]);
 
@@ -154,7 +200,7 @@ export default function AttributeTable() {
                       COORD_COLUMNS.has(col) ? "attr-table__td--mono" : ""
                     }`}
                   >
-                    {feature[col] ?? "—"}
+                    {getCellValue(feature, col)}
                   </td>
                 ))}
               </tr>
