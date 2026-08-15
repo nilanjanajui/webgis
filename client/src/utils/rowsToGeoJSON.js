@@ -31,6 +31,8 @@ function rowToFeature(row, layerId) {
 
   if (isNaN(lat) || isNaN(lng)) return null;
 
+  const { latitude, longitude, point_id, point_name, category, descr, name, description, ...extraProps } = row;
+
   return {
     type: "Feature",
     geometry: {
@@ -38,11 +40,12 @@ function rowToFeature(row, layerId) {
       coordinates: [lng, lat], // GeoJSON: [longitude, latitude]
     },
     properties: {
+      ...extraProps,
       id: generateId(),
-      feature_id: row.point_id || "",
-      name: row.point_name || row.name || "",
-      category: row.category || "Default",
-      descr: row.descr || row.description || "",
+      feature_id: point_id || "",
+      name: point_name || name || "",
+      category: category || "Default",
+      descr: descr || description || "",
       layerId,
       isPersisted: false, // pipeline sets this after save/view decision
     },

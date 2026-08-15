@@ -40,12 +40,18 @@ export default function AttributeTable() {
 
   const features = activeLayer?.features || [];
 
-  // Derive visible columns from the first feature
+  // Derive visible columns from all features
   const columns = useMemo(() => {
     if (!features.length) return [];
-    return Object.keys(features[0]).filter(
-      (k) => !HIDDEN_COLUMNS.has(k) && k !== "id"
-    );
+    const keySet = new Set();
+    features.forEach((f) => {
+      Object.keys(f).forEach((k) => {
+        if (!HIDDEN_COLUMNS.has(k) && k !== "id") {
+          keySet.add(k);
+        }
+      });
+    });
+    return Array.from(keySet);
   }, [features]);
 
   // Filter by search query
