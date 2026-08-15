@@ -19,6 +19,6 @@ const featureSchema = new mongoose.Schema({
       required: true
     }
   }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 module.exports = mongoose.model('Feature', featureSchema);
