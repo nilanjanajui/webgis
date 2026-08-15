@@ -6,10 +6,12 @@
 
 import { useState, useEffect } from "react";
 import AttributeTable from "../panels/AttributeTable";
+import SpatialAnalytics from "../panels/SpatialAnalytics";
 import { useLayersStore } from "../../state/layersStore";
 
 const TABS = [
   { id: "table", label: "Table" },
+  { id: "analytics", label: "Analytics" },
   { id: "legend", label: "Legend" },
   { id: "details", label: "Details" },
 ];
@@ -45,6 +47,12 @@ export default function RightSidebar({ LegendComponent, FeatureDetailsComponent 
         {activeTab === "table" && (
           <div role="tabpanel" id="right-panel-table" aria-labelledby="right-tab-table">
             <AttributeTable />
+          </div>
+        )}
+
+        {activeTab === "analytics" && (
+          <div role="tabpanel" id="right-panel-analytics" aria-labelledby="right-tab-analytics">
+            <SpatialAnalytics />
           </div>
         )}
 

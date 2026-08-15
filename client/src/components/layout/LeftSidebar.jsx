@@ -116,6 +116,10 @@ export default function LeftSidebar({
   onToggleBoundaryDraw,
   isAddingPoint,
   onToggleAddPoint,
+  isMeasuring,
+  onToggleMeasure,
+  isHeatmapEnabled,
+  onToggleHeatmap,
   mapElRef,
 }) {
   const { layers, activeLayerId, boundaryLayer, boundaryVisible, mapInstance, addLayer, setBoundary, toggleBoundaryVisibility } = useLayersStore();
@@ -308,6 +312,22 @@ export default function LeftSidebar({
       <div className="left-sidebar__section">
         <p className="left-sidebar__section-title">Map Tools</p>
         <div className="tool-btn-group">
+          <ToolBtn
+            id="tool-measure"
+            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="2" y1="12" x2="22" y2="12" /><line x1="6" y1="9" x2="6" y2="15" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="18" y1="9" x2="18" y2="15" /></svg>}
+            label={isMeasuring ? "Measuring… (click map)" : "Measure Distance & Area"}
+            active={isMeasuring}
+            onClick={onToggleMeasure}
+            variant={isMeasuring ? "active" : "default"}
+          />
+          <ToolBtn
+            id="tool-heatmap"
+            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2c-4 4-6 7.5-6 11a6 6 0 0012 0c0-3.5-2-7-6-11z" /></svg>}
+            label={isHeatmapEnabled ? "Heatmap Active" : "Heatmap Density Mode"}
+            active={isHeatmapEnabled}
+            onClick={onToggleHeatmap}
+            variant={isHeatmapEnabled ? "active" : "default"}
+          />
           <ToolBtn
             id="tool-draw-boundary"
             icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>}
