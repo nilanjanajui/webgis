@@ -32,17 +32,25 @@ function buildLayerFromGeoJSON(geojson, file, layerId, isPersisted) {
     color: "#FF3B30",
     features: geojson.features.map((f, index) => {
       const props = f.properties || {};
-      return {
-        feature_id: props.feature_id || props.point_id || props.Point_ID || props.ID || props.id || `SHP_${index + 1}`,
-        name: props.name || props.point_name || props.Point_Name || props.Name || `Feature ${index + 1}`,
-        category: props.category || props.Category || "Default",
-        descr: props.descr || props.description || props.Description || "Uploaded vector geometry",
+      const featureId = props.feature_id || props.point_id || props.Point_ID || props.ID || props.id || `SHP_${index + 1}`;
+      const name = props.name || props.point_name || props.Point_Name || props.Name || `Feature ${index + 1}`;
+      const category = props.category || props.Category || "Default";
+      const descr = props.descr || props.description || props.Description || "Uploaded vector geometry";
+
+      const featureObj = {
         ...props,
         id: props.id || `feat_${Math.random().toString(36).slice(2)}`,
         geometry: f.geometry,
         layerId,
         isPersisted,
       };
+
+      if (!("feature_id" in featureObj)) featureObj.feature_id = featureId;
+      if (!("name" in featureObj)) featureObj.name = name;
+      if (!("category" in featureObj)) featureObj.category = category;
+      if (!("descr" in featureObj)) featureObj.descr = descr;
+
+      return featureObj;
     }),
     recordCount: geojson.features.length,
   };
@@ -66,12 +74,14 @@ export default function ConfirmationPreview({ previewData, onClose }) {
     if (geojson) {
       return geojson.features.slice(0, 5).map((f, index) => {
         const props = f.properties || {};
+        if (Object.keys(props).length > 0) {
+          return { ...props };
+        }
         return {
-          feature_id: props.feature_id || props.point_id || props.Point_ID || props.ID || props.id || `SHP_${index + 1}`,
-          name: props.name || props.point_name || props.Point_Name || props.Name || `Feature ${index + 1}`,
-          category: props.category || props.Category || "Default",
-          descr: props.descr || props.description || props.Description || "Uploaded vector geometry",
-          ...props,
+          feature_id: `SHP_${index + 1}`,
+          name: `Feature ${index + 1}`,
+          category: "Default",
+          descr: "Uploaded vector geometry",
         };
       });
     }
