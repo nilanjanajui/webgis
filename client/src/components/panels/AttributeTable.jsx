@@ -26,6 +26,7 @@ const HIDDEN_COLUMNS = new Set([
   "createdAt",
   "updatedAt",
   "layerName",
+  "feature_id",
 ]);
 
 /** Safely extracts property value from feature or feature.properties */
@@ -81,9 +82,28 @@ export default function AttributeTable() {
     const seenLower = new Set();
     const resultCols = [];
 
+    const allKeys = new Set();
+    features.forEach((f) => {
+      Object.keys(f).forEach((k) => allKeys.add(k));
+      if (f.properties && typeof f.properties === "object") {
+        Object.keys(f.properties).forEach((k) => allKeys.add(k));
+      }
+    });
+    const allKeysArray = Array.from(allKeys);
+
     const checkAndAddKey = (rawKey) => {
       if (!rawKey || HIDDEN_COLUMNS.has(rawKey)) return;
       const lower = rawKey.toLowerCase();
+
+      // Omit redundant fallback alias keys when explicit original property columns exist
+      if (
+        (lower === "name" && allKeysArray.some((k) => k.toLowerCase() !== "name" && k.toLowerCase().includes("name"))) ||
+        (lower === "category" && allKeysArray.some((k) => k.toLowerCase() !== "category" && (k.toLowerCase().includes("cat") || k.toLowerCase().includes("type")))) ||
+        (lower === "descr" && allKeysArray.some((k) => k.toLowerCase() !== "descr" && k.toLowerCase().startsWith("desc")))
+      ) {
+        return;
+      }
+
       if (!seenLower.has(lower)) {
         seenLower.add(lower);
         resultCols.push(rawKey);
